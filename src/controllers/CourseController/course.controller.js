@@ -178,8 +178,33 @@ export const facultyJoinCourseByInvitation = async (req, res) => {
 export const adminAllCourses=async(req,res)=>{
     try {
         const courses=await Course.find();
-        return res.status(200).json(courses);
+        return res.status(200).json({
+            success:true,    
+            courses
+        });
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }  
+};
+
+// Single course details
+
+export const singleCourse=async(req,res)=>{
+    try {
+        const id=req.params.id;
+        const course=await Course.findOne({_id:id});
+
+        if(!course)
+            return res.status(400).json({
+                success: false,
+                message: "Course not found"
+            });
+        
+        return res.status(200).json({
+            success:true,    
+            course
+        });;
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
 };
