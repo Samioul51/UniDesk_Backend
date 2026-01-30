@@ -79,13 +79,13 @@ export const studentJoinCourseByInvitation = async (req, res) => {
                 message: "Invalid invitation link"
             });
 
-        if(req.user.role!=="student")
+        if (req.user.role !== "student")
             return res.status(403).json({
                 success: false,
                 message: "Only students can join courses"
             });
 
-        const alreadyJoined = course.students.some(id=>id.toString()===userId.toString());
+        const alreadyJoined = course.students.some(id => id.toString() === userId.toString());
 
         if (alreadyJoined)
             return res.status(409).json({
@@ -99,8 +99,8 @@ export const studentJoinCourseByInvitation = async (req, res) => {
         );
 
         return res.status(200).json({
-            success:true,
-            message:"Joined course successfully"
+            success: true,
+            message: "Joined course successfully"
         })
 
     } catch (error) {
@@ -138,13 +138,13 @@ export const facultyJoinCourseByInvitation = async (req, res) => {
                 message: "Invalid invitation link"
             });
 
-        if(req.user.role!=="faculty")
+        if (req.user.role !== "faculty")
             return res.status(403).json({
                 success: false,
                 message: "Only faculties can join courses"
             });
-        
-        const alreadyJoined = course.teachers.some(id=>id.toString()===userId.toString());
+
+        const alreadyJoined = course.teachers.some(id => id.toString() === userId.toString());
 
         if (alreadyJoined)
             return res.status(409).json({
@@ -152,7 +152,7 @@ export const facultyJoinCourseByInvitation = async (req, res) => {
                 message: "Already instructing the course"
             });
 
-        if(course.teachers.length===2)
+        if (course.teachers.length === 2)
             return res.status(403).json({
                 success: false,
                 message: "Already two faculties instructing the course"
@@ -164,8 +164,8 @@ export const facultyJoinCourseByInvitation = async (req, res) => {
         );
 
         return res.status(200).json({
-            success:true,
-            message:"Joined course successfully"
+            success: true,
+            message: "Joined course successfully"
         })
 
     } catch (error) {
@@ -175,35 +175,81 @@ export const facultyJoinCourseByInvitation = async (req, res) => {
 
 // All courses for admin
 
-export const adminAllCourses=async(req,res)=>{
+export const adminAllCourses = async (req, res) => {
     try {
-        const courses=await Course.find();
+        const courses = await Course.find();
         return res.status(200).json({
-            success:true,    
+            success: true,
             courses
         });
     } catch (error) {
         return res.status(500).json({ message: error.message });
-    }  
+    }
 };
 
 // Single course details
 
-export const singleCourse=async(req,res)=>{
+export const singleCourse = async (req, res) => {
     try {
-        const id=req.params.id;
-        const course=await Course.findOne({_id:id});
+        const id = req.params.id;
+        const course = await Course.findOne({ _id: id });
 
-        if(!course)
+        if (!course)
             return res.status(400).json({
                 success: false,
                 message: "Course not found"
             });
-        
+
         return res.status(200).json({
-            success:true,    
+            success: true,
             course
         });;
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+// A single user's courses
+
+export const getMyCourses = async (req, res) => {
+    try {
+        // Mock
+        req.user = {
+            _id: "66a12f8c9e7b1a23d4c56789",
+            role: "student",
+            email: "student@test.com"
+        };
+
+        const userId = req.user._id;
+        const role = req.user.role;
+
+        let courses;
+
+        if (role === "student") {
+            courses = await Course.find({
+                students: userId
+            })
+                .populate("teachers", "name email")
+                .populate("students", "name studentID");
+        }
+        else if (role === "faculty") {
+            courses = await Course.find({
+                teachers: userId
+            })
+                .populate("teachers", "name email")
+                .populate("students", "name studentID");
+        }
+        else
+            return res.status(403).json({
+                success:false,
+                message:"Invalid role"
+            });
+
+        return res.status(200).json({
+            success: true,
+            count:courses.length,
+            courses
+        })
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }
