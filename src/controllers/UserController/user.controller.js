@@ -92,7 +92,67 @@ export const updateProfile = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "Profile updated successfully"
-        })
+        });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+// Profile update api for admin only
+
+export const adminUpdateProfile=async(req,res)=>{
+    try {
+        const email=req.params.email;
+        const {name,photoURL,status}=req.body;
+        if (!name && !photoURL && !status)
+            return res.status(400).json({
+                success: false,
+                message: "At least one field is required to update profile"
+            });
+
+        const allowedStatus=["active","suspended"];
+
+        const cleanStatus=typeof status==="string"?status.trim():null;
+
+        if(cleanStatus && !allowedStatus.includes(cleanStatus))
+            return res.status(400).json({
+                success: false,
+                message: "Invalid status value"
+            });
+        
+        const updatedFields = {};
+        if (name)
+            updatedFields.name = name;
+        if (photoURL)
+            updatedFields.photoURL = photoURL;
+        if(cleanStatus)
+            updatedFields.status=cleanStatus;
+
+        const result = await User.updateOne(
+            { email },
+            {
+                $set: updatedFields
+            }
+        );
+
+        if (result.matchedCount === 0)
+            return res.status(404).json({
+                success: false,
+                message: "No user found"
+            });
+
+        if(result.modifiedCount===0)
+            return res.status(200).json({
+                success: true,
+                message: "No changes were made"
+            });
+
+        return res.status(200).json({
+            success: true,
+            message: "Profile updated successfully"
+        });
+
+
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }
