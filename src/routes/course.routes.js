@@ -1,5 +1,5 @@
 import express from "express";
-import { createCourse, studentJoinCourseByInvitation } from "../controllers/CourseController/course.controller.js";
+import { createCourse, facultyJoinCourseByInvitation, studentJoinCourseByInvitation } from "../controllers/CourseController/course.controller.js";
 
 const router=express.Router();
 
@@ -9,6 +9,10 @@ router.post("/courses",createCourse);
 
 // Student join course
 
-router.post("/courses/join",studentJoinCourseByInvitation);
+router.post("/courses/student/join",studentJoinCourseByInvitation);
+
+// Faculties join course
+
+router.post("/courses/faculty/join",facultyJoinCourseByInvitation);
 
 export default router;

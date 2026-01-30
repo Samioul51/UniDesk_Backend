@@ -53,6 +53,8 @@ export const createCourse = async (req, res) => {
 
 export const studentJoinCourseByInvitation = async (req, res) => {
     try {
+
+        // Mock(will remove after middleware creation)
         req.user = {
             _id: "66a12f8c9e7b1a23d4c56789",
             role: "student",
@@ -94,6 +96,71 @@ export const studentJoinCourseByInvitation = async (req, res) => {
         await Course.updateOne(
             { _id: course._id },
             { $addToSet: { students: userId } }
+        );
+
+        return res.status(200).json({
+            success:true,
+            message:"Joined course successfully"
+        })
+
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+// Course joining by faculty API
+
+export const facultyJoinCourseByInvitation = async (req, res) => {
+    try {
+
+        // Mock(will remove after middleware creation)
+        req.user = {
+            _id: "66a12f8c9e7b1a23d4c56456",
+            role: "faculty",
+            email: "teacher@cse.kuet.ac.bd"
+        };
+        const { code } = req.query;
+        const userId = req.user._id;
+
+        if (!code)
+            return res.status(400).json({
+                success: false,
+                message: "Invitation code is required"
+            });
+
+        const course = await Course.findOne({
+            invitationCode: code
+        });
+
+        if (!course)
+            return res.status(404).json({
+                success: false,
+                message: "Invalid invitation link"
+            });
+
+        if(req.user.role!=="faculty")
+            return res.status(403).json({
+                success: false,
+                message: "Only faculties can join courses"
+            });
+        
+        const alreadyJoined = course.teachers.some(id=>id.toString()===userId.toString());
+
+        if (alreadyJoined)
+            return res.status(409).json({
+                success: false,
+                message: "Already instructing the course"
+            });
+
+        if(course.teachers.length===2)
+            return res.status(403).json({
+                success: false,
+                message: "Already two faculties instructing the course"
+            });
+
+        await Course.updateOne(
+            { _id: course._id },
+            { $addToSet: { teachers: userId } }
         );
 
         return res.status(200).json({
