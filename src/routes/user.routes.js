@@ -1,5 +1,5 @@
 import express from "express";
-import { adminUpdateProfile, createUser, getSingleUser, getUsers, updateProfile } from "../controllers/UserController/user.controller.js";
+import { adminDeleteUser, adminUpdateProfile, createUser, getSingleUser, getUsers, updateProfile } from "../controllers/UserController/user.controller.js";
 
 
 const router=express.Router();
@@ -23,5 +23,9 @@ router.patch("/users/profile/:email",updateProfile);
 // Profile update api for admin only
 
 router.patch("/admin/users/:email",adminUpdateProfile);
+
+// User delete api for admin only
+
+router.delete("/admin/users/:email",adminDeleteUser);
 
 export default router;

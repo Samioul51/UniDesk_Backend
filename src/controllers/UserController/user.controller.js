@@ -157,3 +157,34 @@ export const adminUpdateProfile=async(req,res)=>{
         return res.status(500).json({ message: error.message });
     }
 };
+
+// User delete api for admin only
+
+export const adminDeleteUser=async(req,res)=>{
+    try {
+        const {email}=req.params;
+
+        const user=await User.findOne({email});
+
+        if(!user)
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+
+        if(user.role==="admin")
+            return res.status(403).json({
+                success: false,
+                message: "Admin users cannot be deleted"
+            });
+        
+        await User.deleteOne({email});
+
+        return res.status(200).json({
+            success:true,
+            message:"User permanently deleted"
+        });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
