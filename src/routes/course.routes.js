@@ -1,5 +1,5 @@
 import express from "express";
-import { createCourse, facultyJoinCourseByInvitation, studentJoinCourseByInvitation } from "../controllers/CourseController/course.controller.js";
+import { adminAllCourses, createCourse, facultyJoinCourseByInvitation, studentJoinCourseByInvitation } from "../controllers/CourseController/course.controller.js";
 
 const router=express.Router();
 
@@ -14,5 +14,9 @@ router.post("/courses/student/join",studentJoinCourseByInvitation);
 // Faculties join course
 
 router.post("/courses/faculty/join",facultyJoinCourseByInvitation);
+
+// All courses for admin
+
+router.get("/admin/courses",adminAllCourses);
 
 export default router;
