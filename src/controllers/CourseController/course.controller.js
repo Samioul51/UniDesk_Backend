@@ -241,15 +241,95 @@ export const getMyCourses = async (req, res) => {
         }
         else
             return res.status(403).json({
-                success:false,
-                message:"Invalid role"
+                success: false,
+                message: "Invalid role"
             });
 
         return res.status(200).json({
             success: true,
-            count:courses.length,
+            count: courses.length,
             courses
         })
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+// Faculty Course Update
+
+export const updateCourse = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const { description, regenerateInvite } = req.body;
+
+        // Mock
+        req.user = {
+            _id: "64f123abc456def789012345",
+            role: "faculty",
+            email: "teacher@test.com"
+        };
+
+        if (req.user.role !== "faculty")
+            return res.status(403).json({
+                success: false,
+                message: "Only faculty can update courses"
+            });
+
+        const course = await Course.findById(id);
+
+        if (!course)
+            return res.status(404).json({
+                success: false,
+                message: "Course not found"
+            });
+
+        const isTeacher = course.teachers.some(
+            t => t.toString() === req.user._id.toString()
+        );
+
+        if (!isTeacher)
+            return res.status(403).json({
+                success: false,
+                message: "You are not a teacher of this course"
+            });
+
+        if (!description || regenerateInvite !== true)
+            return res.status(400).json({
+                success: false,
+                message: "Nothing to update"
+            });
+
+        const updatedFields = {};
+
+        if (description) {
+            if (description.trim() === "")
+                return res.status(400).json({
+                    success: false,
+                    message: "Description cannot be empty"
+                });
+            updatedFields.description = description;
+        }
+        if (regenerateInvite===true)
+            updatedFields.invitationCode = generateInvitationCode();
+
+        const result = await Course.updateOne(
+            { _id: id },
+            { $set: updatedFields }
+        );
+
+        if (result.matchedCount === 0)
+            return res.status(404).json({
+                success: false,
+                message: "Course not found"
+            });
+
+        return res.status(200).json({
+            success: true,
+            message: "Course updated successfully",
+            ...(updatedFields.invitationCode && {
+                newInvitationLink: `${process.env.LIVE_LINK}/join-course?code=${updatedFields.invitationCode}`
+            })
+        });
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }

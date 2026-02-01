@@ -1,5 +1,5 @@
 import express from "express";
-import { adminAllCourses, createCourse, facultyJoinCourseByInvitation, getMyCourses, singleCourse, studentJoinCourseByInvitation } from "../controllers/CourseController/course.controller.js";
+import { adminAllCourses, createCourse, facultyJoinCourseByInvitation, getMyCourses, singleCourse, studentJoinCourseByInvitation, updateCourse } from "../controllers/CourseController/course.controller.js";
 
 const router=express.Router();
 
@@ -26,5 +26,9 @@ router.get("/courses/:id",singleCourse);
 // A single user's courses
 
 router.get("/courses/user/:id",getMyCourses);
+
+// Update course
+
+router.patch("/courses/:id",updateCourse);
 
 export default router;
