@@ -82,3 +82,29 @@ export const courseMaterials=async(req,res)=>{
         return res.status(500).json({ message: error.message });
     }
 };
+
+// Material deletion
+
+export const deleteMaterial=async(req,res)=>{
+    try {
+        const id=req.params.id;
+
+        const material=await Material.findById(id);
+
+        if(!material)
+            return res.status(404).json({
+                success:false,
+                message:"Material not found"
+            });
+        
+        await Material.deleteOne({_id:id});
+
+        return res.status(200).json({
+            success:true,
+            message:"Material deleted successfully"
+        });
+
+   } catch (error) {
+        res.status(500).json({message:error.message});      
+    }
+};
