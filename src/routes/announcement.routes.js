@@ -1,10 +1,18 @@
 import express from "express";
-import { createAnnouncement, updateAnnouncement } from "../controllers/AnnouncementController/announcement.controller.js";
+import { createAnnouncement, getCourseAnnouncements, updateAnnouncement } from "../controllers/AnnouncementController/announcement.controller.js";
 
 const router=express.Router();
 
-router.post("/announcement",createAnnouncement);
+// Announcement creation
 
-router.patch("/announcement/:id",updateAnnouncement);
+router.post("/course/:id/announcement",createAnnouncement);
+
+// Announcement update
+
+router.patch("/course/:id/announcement/:id",updateAnnouncement);
+
+// Coursewise announcements
+
+router.get("/course/:id/announcements",getCourseAnnouncements);
 
 export default router;

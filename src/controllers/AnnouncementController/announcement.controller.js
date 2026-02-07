@@ -2,6 +2,7 @@ import { Announcement } from "../../models/AnnouncementModel/announcement.model.
 import { Course } from "../../models/CourseModel/course.model.js";
 import { User } from "../../models/UserModel/user.model.js";
 
+// Announcement creation
 
 export const createAnnouncement=async(req,res)=>{
     try {
@@ -56,6 +57,8 @@ export const createAnnouncement=async(req,res)=>{
         return res.status(500).json({ message: error.message });
     }
 };
+
+// Announcement update 
 
 export const updateAnnouncement=async (req,res)=>{
     try {
@@ -120,6 +123,54 @@ export const updateAnnouncement=async (req,res)=>{
             success:true,
             message:"Announcement updated successfully"
         });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+// Coursewise announcements
+
+export const getCourseAnnouncements=async(req,res)=>{
+    try {
+        const {id}=req.params;
+
+        const course=await Course.findById(id);
+
+        if(!course)
+            return res.status(404).json({
+                success: false,
+                message: "Course not found"
+            });
+
+        // const user=await User.findById(userID);
+
+        // if(!user)
+        //     return res.status(404).json({
+        //         success: false,
+        //         message: "User not found"
+        //     });
+        
+        // const isTeacher=course.teachers.some(t=>t.toString()===user._id.toString());
+        // const isStudent=course.students.some(s=>s.toString()===user._id.toString());
+
+        // if(!isStudent && !isTeacher)
+        //     return res.status(403).json({
+        //         success: false,
+        //         message: "You are not involved in this course"
+        //     });
+
+        const announcements=await Announcement.find({
+            course:id
+        })
+        .populate("teacher","name")
+        .sort({createdAt:-1});
+
+        return res.status(200).json({
+            success:true,
+            count:announcements.length,
+            announcements
+        });
+
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }
