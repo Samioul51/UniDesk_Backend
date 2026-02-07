@@ -2,6 +2,7 @@ import { Course } from "../../models/CourseModel/course.model.js";
 import { Material } from "../../models/StudyMaterialModel/material.model.js";
 import { User } from "../../models/UserModel/user.model.js";
 
+// Upload material
 
 export const uploadMaterial = async (req, res) => {
     try {
@@ -52,6 +53,31 @@ export const uploadMaterial = async (req, res) => {
             success: true,
             message: "Material uploaded successfully"
         });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+// Course wise materials
+
+export const courseMaterials=async(req,res)=>{
+    try {
+        const id=req.params.id;
+        
+        const course=await Course.findById(id);
+
+        if(!course)
+            return res.status(404).json({
+                success: false,
+                message: "Course not found"
+            });
+        
+        const materials=await Material.find({course:id})
+
+        return res.status(200).json({
+            success:true,
+            materials
+        })
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }
