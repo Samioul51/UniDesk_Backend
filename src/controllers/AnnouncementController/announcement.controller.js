@@ -63,7 +63,7 @@ export const createAnnouncement = async (req, res) => {
 export const updateAnnouncement = async (req, res) => {
     try {
         const id = req.params.id;
-        const { title, description, attachments, userID, addAttachments, removeAttachments } = req.body;
+        const { title, description, userID, addAttachments, removeAttachments } = req.body;
 
         const announcement = await Announcement.findById(id);
 
@@ -87,7 +87,12 @@ export const updateAnnouncement = async (req, res) => {
                 message: "You can only update your own announcements"
             });
 
-        if (!title && !description && !addAttachments && !removeAttachments)
+        const hasTitle = typeof title === "string" && title.trim() !== "" && title!==announcement.title;
+        const hasDescription = typeof description === "string" && description.trim() !== "" && description!==announcement.description;
+        const hasAdd = Array.isArray(addAttachments) && addAttachments.length > 0;
+        const hasRemove = Array.isArray(removeAttachments) && removeAttachments.length > 0;
+
+        if (!hasTitle && !hasDescription && !hasAdd && !hasRemove)
             return res.status(400).json({
                 success: false,
                 message: "Nothing to update"
@@ -96,10 +101,10 @@ export const updateAnnouncement = async (req, res) => {
         const updatedFields = {};
 
         if (title)
-            updatedFields.title = title;
+            updatedFields.title = title.trim();
 
         if (description)
-            updatedFields.description = description;
+            updatedFields.description = description.trim();
 
         if (Object.keys(updatedFields).length > 0)
             await Announcement.updateOne(
@@ -191,7 +196,7 @@ export const deleteAnnouncement = async (req, res) => {
             });
 
         await Announcement.deleteOne(
-            {_id:id}
+            { _id: id }
         );
 
         return res.status(200).json({
