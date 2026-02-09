@@ -3,8 +3,8 @@ import cors from "cors";
 import userRoutes from "./routes/user.routes.js";
 import courseRoutes from "./routes/course.routes.js";
 import announcementRoutes from "./routes/announcement.routes.js";
-
 import materialRoutes from "./routes/material.routes.js";
+import assignmentRoutes from "./routes/assignment.routes.js";
 
 const app=express();
 
@@ -28,5 +28,9 @@ app.use("/api", announcementRoutes);
 // Material Routes
 
 app.use("/api",materialRoutes)
+
+// Assignment
+
+app.use("/api",assignmentRoutes);
 
 export default app;
