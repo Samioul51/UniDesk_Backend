@@ -98,7 +98,7 @@ export const uploadAssignment = async (req, res) => {
 export const getAssignment=async(req,res)=>{
     try {
         const {courseID,assignmentID}=req.params;
-        
+
         const course=await Course.findById(courseID);
 
         if(!course)
@@ -126,5 +126,31 @@ export const getAssignment=async(req,res)=>{
         return res.status(500).json({
             message: error.message
         });
+    }
+};
+
+// Assignment deletion
+
+export const deleteAssignment=async(req,res)=>{
+    try {
+        const id=req.params.id;
+
+        const assignment=await Assignment.findById(id);
+
+        if(!assignment)
+            return res.status(404).json({
+                success:false,
+                message:"Assignment not found"
+            });
+        
+        await Assignment.deleteOne({_id:id});
+
+        return res.status(200).json({
+            success:true,
+            message:"Assignment deleted successfully"
+        });
+
+   } catch (error) {
+        res.status(500).json({message:error.message});      
     }
 };
