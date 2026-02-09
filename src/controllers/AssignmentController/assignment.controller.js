@@ -93,3 +93,38 @@ export const uploadAssignment = async (req, res) => {
     }
 };
 
+// Single assignment details
+
+export const getAssignment=async(req,res)=>{
+    try {
+        const {courseID,assignmentID}=req.params;
+        
+        const course=await Course.findById(courseID);
+
+        if(!course)
+            return res.status(404).json({
+                success:false,
+                message:"Course not found"
+            });
+
+        const assignment=await Assignment.findOne({
+            _id:assignmentID,
+            course:courseID
+        });
+
+        if(!assignment)
+            return res.status(404).json({
+                success:false,
+                message:"Assignment for this course not found"
+            });
+
+        return res.status(200).json({
+            success:true,
+            assignment
+        })
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        });
+    }
+};
