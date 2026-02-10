@@ -1,5 +1,5 @@
 import express from "express";
-import { courseAssignments, deleteAssignment, getAssignment, uploadAssignment } from "../controllers/AssignmentController/assignment.controller.js";
+import { courseAssignments, deleteAssignment, getAssignment, updateAssignment, uploadAssignment } from "../controllers/AssignmentController/assignment.controller.js";
 
 const router=express.Router();
 
@@ -18,5 +18,9 @@ router.get("/course/:courseID/assignment/:assignmentID",getAssignment);
 // Delete assignment
 
 router.delete("/assignment/:id",deleteAssignment);
+
+// Update assignment
+
+router.patch("/assignment/:id",updateAssignment);
 
 export default router;

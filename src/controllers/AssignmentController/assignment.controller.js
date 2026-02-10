@@ -69,16 +69,16 @@ export const uploadAssignment = async (req, res) => {
                 message: "You are not an instructor of this course"
             });
 
-        const assignment={
-            course:id,
+        const assignment = {
+            course: id,
             title,
             description,
             dueDate,
             totalMarks,
             createdBy
         };
-        if(Array.isArray(attachments) && attachments.length>0)
-            assignment.attachments=attachments;
+        if (Array.isArray(attachments) && attachments.length > 0)
+            assignment.attachments = attachments;
 
         await Assignment.create(assignment);
 
@@ -95,31 +95,31 @@ export const uploadAssignment = async (req, res) => {
 
 // Single assignment details
 
-export const getAssignment=async(req,res)=>{
+export const getAssignment = async (req, res) => {
     try {
-        const {courseID,assignmentID}=req.params;
+        const { courseID, assignmentID } = req.params;
 
-        const course=await Course.findById(courseID);
+        const course = await Course.findById(courseID);
 
-        if(!course)
+        if (!course)
             return res.status(404).json({
-                success:false,
-                message:"Course not found"
+                success: false,
+                message: "Course not found"
             });
 
-        const assignment=await Assignment.findOne({
-            _id:assignmentID,
-            course:courseID
+        const assignment = await Assignment.findOne({
+            _id: assignmentID,
+            course: courseID
         });
 
-        if(!assignment)
+        if (!assignment)
             return res.status(404).json({
-                success:false,
-                message:"Assignment for this course not found"
+                success: false,
+                message: "Assignment for this course not found"
             });
 
         return res.status(200).json({
-            success:true,
+            success: true,
             assignment
         })
     } catch (error) {
@@ -131,26 +131,87 @@ export const getAssignment=async(req,res)=>{
 
 // Assignment deletion
 
-export const deleteAssignment=async(req,res)=>{
+export const deleteAssignment = async (req, res) => {
     try {
-        const id=req.params.id;
+        const id = req.params.id;
 
-        const assignment=await Assignment.findById(id);
+        const assignment = await Assignment.findById(id);
 
-        if(!assignment)
+        if (!assignment)
             return res.status(404).json({
-                success:false,
-                message:"Assignment not found"
+                success: false,
+                message: "Assignment not found"
             });
-        
-        await Assignment.deleteOne({_id:id});
+
+        await Assignment.deleteOne({ _id: id });
 
         return res.status(200).json({
-            success:true,
-            message:"Assignment deleted successfully"
+            success: true,
+            message: "Assignment deleted successfully"
         });
 
-   } catch (error) {
-        res.status(500).json({message:error.message});      
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Assignment updation
+
+export const updateAssignment = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const { title, description, addAttachments, removeAttachments } = req.body;
+
+        const assignment = await Assignment.findById(id);
+
+        if (!assignment)
+            return res.status(404).json({
+                success: false,
+                message: "Assignment not found"
+            });
+
+        const hasTitle = typeof title === "string" && title.trim() !== "" && title !== assignment.title;
+        const hasDescription = typeof description === "string" && description.trim() !== "" && description !== assignment.description;
+        const hasAdd = Array.isArray(addAttachments) && addAttachments.length > 0;
+        const hasRemove = Array.isArray(removeAttachments) && removeAttachments.length > 0;
+
+        if (!hasTitle && !hasDescription && !hasAdd && !hasRemove)
+            return res.status(400).json({
+                success: false,
+                message: "Nothing to update"
+            });
+
+        const updatedFields = {};
+
+        if (title)
+            updatedFields.title = title.trim();
+
+        if (description)
+            updatedFields.description = description.trim();
+
+        if (Object.keys(updatedFields).length > 0)
+            await Assignment.updateOne(
+                { _id: id },
+                { $set: updatedFields }
+            );
+
+        if (addAttachments && addAttachments.length > 0)
+            await Assignment.updateOne(
+                { _id: id },
+                { $push: { attachments: { $each: addAttachments } } }
+            );
+
+        if (removeAttachments && removeAttachments.length > 0)
+            await Assignment.updateOne(
+                { _id: id },
+                { $pull: { attachments: { url: { $in: removeAttachments } } } }
+            );
+
+        return res.status(200).json({
+            success: true,
+            message: "Assignment updated successfully"
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
 };
