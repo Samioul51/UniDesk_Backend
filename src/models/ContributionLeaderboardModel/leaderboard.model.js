@@ -1,5 +1,4 @@
-const { Schema, default: mongoose } = require("mongoose");
-
+import mongoose, { Schema } from "mongoose";
 
 const leaderboardSchema=new Schema({
     user:{
@@ -24,4 +23,4 @@ const leaderboardSchema=new Schema({
     timestamps:true
 });
 
-export const Leaderboard=mongoose.model("leaderboard",leaderboardSchema);
+export const Leaderboard=mongoose.model("leaderboard",leaderboardSchema,"leaderboard");

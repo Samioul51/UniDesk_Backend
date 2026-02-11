@@ -67,7 +67,7 @@ export const getItems = async (req, res) => {
 
         const skip = (page - 1) * limit;
 
-        const items = (await Repository.find(filter).populate("uploader", "name")).sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
+        const items = await Repository.find(filter).populate("uploader", "name").sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
 
         const total = await Repository.countDocuments(filter);
 
@@ -81,7 +81,7 @@ export const getItems = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: error.message
-        })
+        });
     }
 };
 
@@ -192,7 +192,7 @@ export const itemStatusUpdate = async (req, res) => {
 
 export const getLeaderboard = async (req, res) => {
     try {
-        const userID = req.user._id;
+        const userID = req.user?._id;
 
         const topUsers = await Leaderboard.find().populate("user", "name studentID")
             .sort({ totalPoints: -1 }).limit(10);
@@ -202,23 +202,24 @@ export const getLeaderboard = async (req, res) => {
         }));
 
         let currentUserData = null;
+        if (userID) {
+            const isInTop10 = rankedTopUsers.find(
+                u => u.user._id.toString() === userID.toString()
+            );
 
-        const isInTop10 = rankedTopUsers.find(
-            u => u.user._id.toString() === userID.toString()
-        );
+            if (isInTop10)
+                currentUserData = isInTop10
+            else {
+                const currentUser = await Leaderboard.findOne({ user: userID });
 
-        if (isInTop10)
-            currentUserData = isInTop10
-        else {
-            const currentUser = await Leaderboard.findOne({ user: userID });
-
-            if (currentUser) {
-                const position = await Leaderboard.countDocuments({
-                    totalPoints: { $gt: currentUser.totalPoints }
-                });
-                currentUserData = {
-                    rank: position + 1, ...currentUser.toObject()
-                };
+                if (currentUser) {
+                    const position = await Leaderboard.countDocuments({
+                        totalPoints: { $gt: currentUser.totalPoints }
+                    });
+                    currentUserData = {
+                        rank: position + 1, ...currentUser.toObject()
+                    };
+                }
             }
         }
 

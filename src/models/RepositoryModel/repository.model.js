@@ -1,5 +1,4 @@
-const { Schema, default: mongoose } = require("mongoose");
-
+import mongoose, { Schema } from "mongoose";
 
 const repositorySchema = new Schema({
     title: {
@@ -71,4 +70,4 @@ const repositorySchema = new Schema({
     timestamps: true
 });
 
-export const Repository = mongoose.model("repository", repositorySchema);
+export const Repository = mongoose.model("repository", repositorySchema,"repository");
