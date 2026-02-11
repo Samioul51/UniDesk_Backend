@@ -1,3 +1,4 @@
+import { Leaderboard } from "../../models/ContributionLeaderboardModel/leaderboard.model.js";
 import { Repository } from "../../models/RepositoryModel/repository.model.js";
 import { User } from "../../models/UserModel/user.model.js";
 
@@ -123,7 +124,7 @@ export const itemStatusUpdate = async (req, res) => {
                 message: "Item not found"
             });
 
-        const { status,rejectedReason,adminID } = req.body;
+        const { status, rejectedReason, adminID } = req.body;
 
         if (!status)
             return res.status(400).json({
@@ -131,44 +132,44 @@ export const itemStatusUpdate = async (req, res) => {
                 message: "Status is required"
             });
 
-        const user=await User.findById(adminID);
+        const user = await User.findById(adminID);
 
-        if(!user)
+        if (!user)
             return res.status(404).json({
-                success:false,
-                message:"User not found"
+                success: false,
+                message: "User not found"
             });
 
-        if(user.role!=="admin")
+        if (user.role !== "admin")
             return res.status(403).json({
-                success:false,
-                message:"Only admins can change status"
+                success: false,
+                message: "Only admins can change status"
             });
 
-        const allowedStatus=["approved","rejected"];
+        const allowedStatus = ["approved", "rejected"];
 
-        if(!allowedStatus.includes(status))
+        if (!allowedStatus.includes(status))
             return res.status(400).json({
-                success:false,
-                message:"Invalid status value"
+                success: false,
+                message: "Invalid status value"
             });
 
-        const updatedData={status}
+        const updatedData = { status }
 
-        if(status==="approved"){
-            updatedData.approvedBy=adminID;
-            updatedData.approvedAt=new Date(),
-            updatedData.rejectedReason=null;
+        if (status === "approved") {
+            updatedData.approvedBy = adminID;
+            updatedData.approvedAt = new Date(),
+                updatedData.rejectedReason = null;
         }
 
-        if(status==="rejected"){
-            if(!rejectedReason)
+        if (status === "rejected") {
+            if (!rejectedReason)
                 return res.status(400).json({
-                    success:false,
-                    message:"Rejection reason is required"
+                    success: false,
+                    message: "Rejection reason is required"
                 });
 
-            updatedData.rejectedReason=rejectedReason;
+            updatedData.rejectedReason = rejectedReason;
         }
 
         await Repository.updateOne(
@@ -177,8 +178,54 @@ export const itemStatusUpdate = async (req, res) => {
         );
 
         return res.status(200).json({
-            success:true,
-            message:"Item status updated successfully"
+            success: true,
+            message: "Item status updated successfully"
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        });
+    }
+};
+
+// Leaderboard
+
+export const getLeaderboard = async (req, res) => {
+    try {
+        const userID = req.user._id;
+
+        const topUsers = await Leaderboard.find().populate("user", "name studentID")
+            .sort({ totalPoints: -1 }).limit(10);
+
+        const rankedTopUsers = topUsers.map((entry, index) => ({
+            rank: index + 1, ...entry.toObject()
+        }));
+
+        let currentUserData = null;
+
+        const isInTop10 = rankedTopUsers.find(
+            u => u.user._id.toString() === userID.toString()
+        );
+
+        if (isInTop10)
+            currentUserData = isInTop10
+        else {
+            const currentUser = await Leaderboard.findOne({ user: userID });
+
+            if (currentUser) {
+                const position = await Leaderboard.countDocuments({
+                    totalPoints: { $gt: currentUser.totalPoints }
+                });
+                currentUserData = {
+                    rank: position + 1, ...currentUser.toObject()
+                };
+            }
+        }
+
+        return res.status(200).json({
+            success: true,
+            top10: rankedTopUsers,
+            currentUser: currentUserData
         });
     } catch (error) {
         return res.status(500).json({
