@@ -1,5 +1,5 @@
 import express from "express";
-import { itemUpload } from "../controllers/RepositoryController/repository.controller";
+import { getItems, getSingleItem, itemUpload } from "../controllers/RepositoryController/repository.controller";
 
 const router=express.Router();
 
@@ -7,5 +7,12 @@ const router=express.Router();
 
 router.post("/repository",itemUpload);
 
+// Get items
+
+router.get("/repository",getItems);
+
+// Get single item
+
+router.get("/repository/:id",getSingleItem);
 
 export default router;
