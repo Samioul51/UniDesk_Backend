@@ -1,0 +1,63 @@
+import mongoose, { Schema } from "mongoose";
+
+const assignmentSchema=new Schema({
+    course:{
+        type:Schema.Types.ObjectId,
+        ref:"courses",
+        required:true
+    },
+    title:{
+        type:String,
+        required:true
+    },
+    description:{
+        type:String,
+        required:true,
+    },
+    dueDate:{
+        type:Date,
+        required:true
+    },
+    totalMarks:{
+        type:Number,
+        required:true
+    },
+    attachments:[{
+        url:{
+            type:String
+        }
+    }],
+    createdBy:{
+        type:Schema.Types.ObjectId,
+        ref:"users",
+        required:true
+    },
+    submissions:[{
+        student:{
+            type:Schema.Types.ObjectId,
+            ref:"users",
+            required:true
+        },
+        submissionURL:{
+            type:String,
+            required:true
+        },
+        submittedAt:{
+            type:Date,
+            default:Date.now
+        },
+        marks:{
+            type:Number,
+            default:null
+        },
+        feedback:{
+            type:String
+        }
+    }],
+    createdAt:{
+        type:Date,
+        default:Date.now
+    }
+});
+
+export const Assignment=mongoose.model("assignments",assignmentSchema);
