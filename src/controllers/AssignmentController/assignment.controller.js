@@ -215,3 +215,200 @@ export const updateAssignment = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// Assignment submission
+
+export const submitAssignment = async (req, res) => {
+    try {
+        const id = req.params.id;
+
+        const assignment = await Assignment.findById(id);
+
+        if (!assignment)
+            return res.status(404).json({
+                success: false,
+                message: "Assignment not found"
+            });
+
+        const { userID, submissionURL } = req.body;
+
+        if (!submissionURL)
+            return res.status(400).json({
+                success: false,
+                message: "Submission URL required"
+            });
+
+        const user = await User.findById(userID);
+
+        if (!user)
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+
+        const course = await Course.findById(assignment.course);
+
+        const isStudent = course.students.some(
+            s => s.toString() === userID.toString()
+        );
+
+        if (!isStudent)
+            return res.status(403).json({
+                success: false,
+                message: "You are not an student of this course"
+            });
+
+        const now = new Date();
+
+        if (now > assignment.dueDate)
+            return res.status(403).json({
+                success: false,
+                message: "Submission deadline has passed"
+            });
+
+        const alreadySubmitted = assignment.submissions.some(
+            sub => sub.student.toString() === userID.toString()
+        );
+
+        if (alreadySubmitted)
+            return res.status(409).json({
+                success: false,
+                message: "You have already submitted this assignment"
+            });
+
+        await Assignment.updateOne(
+            { _id: id },
+            {
+                $push: {
+                    submissions: {
+                        student: userID,
+                        submissionURL: submissionURL,
+                        submittedAt: new Date()
+                    }
+                }
+            }
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Assignment submitted successfully"
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Get submissions
+
+export const getAssignmentSubmissions = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const { userID } = req.query;
+
+        const assignment = await Assignment.findById(id)
+            .populate("submissions.student", "name email studentID");
+
+        if (!assignment)
+            return res.status(404).json({
+                success: false,
+                message: "Assignment not found"
+            });
+
+        const course = await Course.findById(assignment.course);
+
+        if (!course)
+            return res.status(404).json({
+                success: false,
+                message: "Course not found"
+            });
+
+        const isTeacher = course.teachers.some(
+            t => t.toString() === userID.toString()
+        );
+
+        if (!isTeacher)
+            return res.status(403).json({
+                success: false,
+                message: "Only instructors can view submissions"
+            });
+
+        return res.status(200).json({
+            success: true,
+            totalSubmissions: assignment.submissions.length,
+            submissions: assignment.submissions
+        });
+
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+// Providing marks
+
+export const gradeSubmission = async (req, res) => {
+    try {
+        const { id, submissionId } = req.params;
+        const { marks, feedback, userID } = req.body;
+
+        const assignment = await Assignment.findById(id);
+
+        if (!assignment)
+            return res.status(404).json({
+                success: false,
+                message: "Assignment not found"
+            });
+
+        const course = await Course.findById(assignment.course);
+
+        if (!course)
+            return res.status(404).json({
+                success: false,
+                message: "Course not found"
+            });
+
+        const isTeacher = course.teachers.some(
+            t => t.toString() === userID.toString()
+        );
+
+        if (!isTeacher)
+            return res.status(403).json({
+                success: false,
+                message: "Only instructors can grade submissions"
+            });
+
+        const submission = assignment.submissions.id(submissionId);
+
+        if (!submission)
+            return res.status(404).json({
+                success: false,
+                message: "Submission not found"
+            });
+
+        if (marks == null)
+            return res.status(400).json({
+                success: false,
+                message: "Marks required"
+            });
+
+        if (marks > assignment.totalMarks)
+            return res.status(400).json({
+                success: false,
+                message: "Marks exceed total marks"
+            });
+
+        submission.marks = marks;
+        if (feedback)
+            submission.feedback = feedback;
+
+        await assignment.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Submission graded successfully"
+        });
+
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
