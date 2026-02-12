@@ -5,6 +5,7 @@ const supervisorSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: "users",
         required: true,
+        unique:true,
         index:true
     },
     supervises: [{
