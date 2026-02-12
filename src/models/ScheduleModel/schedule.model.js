@@ -1,7 +1,7 @@
 import mongoose, { Schema } from "mongoose";
 
 const scheduleSchema = new Schema({
-    teacher: {
+    faculty: {
         type: Schema.Types.ObjectId,
         ref: "User",
         required: true,
@@ -24,12 +24,22 @@ const scheduleSchema = new Schema({
             ],
             freeSlots:[
                 {
-                    startTime:String,
-                    endTime:String
+                    startTime:{
+                        type:String,
+                        required:true,
+                        trim:true
+                    },
+                    endTime:{
+                        type:String,
+                        required:true,
+                        trim:true
+                    },
                 }
             ]
         }
     ]
+},{
+    timestamps:true
 });
 
 export const Schedule=mongoose.model("Schedule",scheduleSchema);
