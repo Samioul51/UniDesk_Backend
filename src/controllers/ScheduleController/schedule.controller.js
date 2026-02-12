@@ -60,7 +60,6 @@ export const scheduleCreation = async (req, res) => {
     }
 };
 
-
 // GET faculty schedule
 
 export const facultySchedule = async (req, res) => {
@@ -75,7 +74,7 @@ export const facultySchedule = async (req, res) => {
                 message: "User not found"
             });
 
-        if (user.role!=="faculty")
+        if (user.role !== "faculty")
             return res.status(403).json({
                 success: false,
                 message: "User is not a faculty"
@@ -92,6 +91,83 @@ export const facultySchedule = async (req, res) => {
         return res.status(200).json({
             success: true,
             schedule
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        });
+    }
+};
+
+// Update schedule
+
+export const updateSchedule = async (req, res) => {
+    try {
+        const { facultyID, weeklySchedule } = req.body;
+
+        if (!facultyID || !weeklySchedule)
+            return res.status(400).json({
+                success: false,
+                message: "Faculty ID and weekly schedule are required"
+            });
+
+        if (!Array.isArray(weeklySchedule) || weeklySchedule.length === 0)
+            return res.status(400).json({
+                success: false,
+                message: "Weekly schedule cannot be empty"
+            });
+
+        const user = await User.findById(facultyID);
+
+        if (!user)
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+
+        if (user.role !== "faculty")
+            return res.status(403).json({
+                success: false,
+                message: "User is not a faculty"
+            });
+
+        const days = weeklySchedule.map(d => d.day);
+        const uniqueDays = new Set(days);
+
+        if (days.length !== uniqueDays.size)
+            return res.status(400).json({
+                success: false,
+                message: "Duplicate days are not allowed"
+            });
+
+        const existingSchedule = await Schedule.findOne({ faculty: facultyID });
+
+        if (!existingSchedule)
+            return res.status(404).json({
+                success: false,
+                message: "Schedule not found"
+            });
+
+        const existing = existingSchedule.toObject().weeklySchedule;
+
+        const isSame =
+            JSON.stringify(existing) ===
+            JSON.stringify(weeklySchedule);
+
+        if (isSame)
+            return res.status(200).json({
+                success: true,
+                message: "Nothing to update"
+            });
+
+        existingSchedule.weeklySchedule = weeklySchedule;
+
+        await existingSchedule.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Schedule updated successfully",
+            schedule: existingSchedule
         });
     } catch (error) {
         return res.status(500).json({

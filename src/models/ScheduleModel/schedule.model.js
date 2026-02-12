@@ -10,6 +10,7 @@ const scheduleSchema = new Schema({
     },
     weeklySchedule: [
         {
+            _id: false,
             day: {
                 type: String,
                 enum: ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
@@ -17,6 +18,7 @@ const scheduleSchema = new Schema({
             },
             classes:[
                 {
+                    _id: false,
                     courseName:String,
                     startTime:String,
                     endTime:String
@@ -24,6 +26,7 @@ const scheduleSchema = new Schema({
             ],
             freeSlots:[
                 {
+                    _id: false, 
                     startTime:{
                         type:String,
                         required:true,

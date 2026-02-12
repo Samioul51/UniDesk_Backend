@@ -41,6 +41,6 @@ app.use("/api",assignmentRoutes);
 
 // Schedule routes
 
-app.use("/api",scheduleRoutes)
+app.use("/api",scheduleRoutes);
 
 export default app;
