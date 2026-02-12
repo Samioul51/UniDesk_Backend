@@ -6,6 +6,7 @@ import announcementRoutes from "./routes/announcement.routes.js";
 import repositoryRoutes from "./routes/repository.routes.js";
 import materialRoutes from "./routes/material.routes.js";
 import assignmentRoutes from "./routes/assignment.routes.js";
+import scheduleRoutes from "./routes/schedule.routes.js";
 
 const app=express();
 
@@ -37,5 +38,9 @@ app.use("/api",repositoryRoutes);
 // Assignment
 
 app.use("/api",assignmentRoutes);
+
+// Schedule routes
+
+app.use("/api",scheduleRoutes)
 
 export default app;

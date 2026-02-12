@@ -1,6 +1,8 @@
 import { Schedule } from "../../models/ScheduleModel/schedule.model.js";
 import { User } from "../../models/UserModel/user.model.js";
 
+// Schedule creation by admin
+
 export const scheduleCreation = async (req, res) => {
     try {
         const { facultyID, weeklySchedule } = req.body;
@@ -19,16 +21,16 @@ export const scheduleCreation = async (req, res) => {
                 message: "Faculty ID not found"
             });
 
-        if(faculty.role!=="faculty")
+        if (faculty.role !== "faculty")
             return res.status(403).json({
                 success: false,
                 message: "Only schedules of faculties can be created"
             });
 
-        const days=weeklySchedule.map(d=>d.day);
-        const uniqueDays=new Set(days);
+        const days = weeklySchedule.map(d => d.day);
+        const uniqueDays = new Set(days);
 
-        if(days.length!==uniqueDays.size)
+        if (days.length !== uniqueDays.size)
             return res.status(400).json({
                 success: false,
                 message: "Duplicate days are not allowed"
@@ -56,4 +58,44 @@ export const scheduleCreation = async (req, res) => {
             message: error.message
         });
     }
-};  
+};
+
+
+// GET faculty schedule
+
+export const facultySchedule = async (req, res) => {
+    try {
+        const id = req.params.id;
+
+        const user = await User.findById(id);
+
+        if (!user)
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+
+        if (user.role!=="faculty")
+            return res.status(403).json({
+                success: false,
+                message: "User is not a faculty"
+            });
+
+        const schedule = await Schedule.findOne({ faculty: id });
+
+        if (!schedule)
+            return res.status(404).json({
+                success: false,
+                message: "Schedule not found"
+            });
+
+        return res.status(200).json({
+            success: true,
+            schedule
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        });
+    }
+};
