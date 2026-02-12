@@ -3,7 +3,7 @@ import mongoose, { Schema } from "mongoose";
 const supervisorSchema = new Schema({
     supervisor: {
         type: Schema.Types.ObjectId,
-        ref: "users",
+        ref: "User",
         required: true,
         unique:true,
         index:true
@@ -11,7 +11,7 @@ const supervisorSchema = new Schema({
     supervises: [{
         student: {
             type: Schema.Types.ObjectId,
-            ref: "users",
+            ref: "User",
             required: true
         },
         status: {
@@ -30,4 +30,4 @@ const supervisorSchema = new Schema({
     timestamps: true
 });
 
-export const Supervisor = mongoose.model("supervisors", supervisorSchema);
+export const Supervisor = mongoose.model("Supervisor", supervisorSchema);

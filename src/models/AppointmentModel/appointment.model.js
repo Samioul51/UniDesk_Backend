@@ -3,13 +3,13 @@ import mongoose, { Schema } from "mongoose";
 const appointmentSchema=new Schema({
     teacher:{
         type:Schema.Types.ObjectId,
-        ref:"users",
+        ref:"User",
         required:true,
         index:true
     },
     student:{
         type:Schema.Types.ObjectId,
-        ref:"users",
+        ref:"User",
         required:true,
         index:true
     },
@@ -40,4 +40,4 @@ appointmentSchema.index(
   { unique: false }
 );
 
-export const Appointment=mongoose.model("appointments",appointmentSchema);
+export const Appointment=mongoose.model("Appointment",appointmentSchema);
