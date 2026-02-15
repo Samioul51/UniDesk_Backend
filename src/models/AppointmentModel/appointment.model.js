@@ -3,13 +3,13 @@ import mongoose, { Schema } from "mongoose";
 const appointmentSchema=new Schema({
     faculty:{
         type:Schema.Types.ObjectId,
-        ref:"User",
+        ref:"users",
         required:true,
         index:true
     },
     student:{
         type:Schema.Types.ObjectId,
-        ref:"User",
+        ref:"users",
         required:true,
         index:true
     },
@@ -30,7 +30,14 @@ const appointmentSchema=new Schema({
         type:String,
         enum:["pending","approved","completed","rejected","cancelled"],
         default:"pending"
-    }
+    },
+    cancelRequestedByStudent:{ 
+        type:Boolean, 
+        default:false 
+    },
+    studentCancelReason:String,
+    facultyCancelReason:String,
+    rejectionReason:String
 },{
     timestamps:true
 });

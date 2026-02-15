@@ -1,5 +1,5 @@
-import { Appointment } from "../../models/AppointmentModel/appointment.model.js";
 import { User } from "../../models/UserModel/user.model.js";
+import { Appointment } from "../../models/AppointmentModel/appointment.model.js";
 import { Schedule } from "../../models/ScheduleModel/schedule.model.js";
 
 // Appointment booking
@@ -63,6 +63,12 @@ export const bookAppointment = async (req, res) => {
         const requestedStart = new Date(`${date}T${startTime}:00`);
         const requestedEnd = new Date(`${date}T${endTime}:00`);
 
+        if (requestedStart < new Date())
+            return res.status(400).json({
+                success: false,
+                message: "Cannot book appointment in the past"
+            });
+
         if (requestedEnd <= requestedStart)
             return res.status(400).json({
                 success: false,
@@ -119,21 +125,21 @@ export const bookAppointment = async (req, res) => {
 
 export const getStudentAppointments = async (req, res) => {
     try {
-        const id = req.params.studentID;
+        const id = req.params.id;
 
         const student = await User.findById(id);
 
         if (!student || student.role !== "student")
             return res.status(404).json({
-                success:false,
+                success: false,
                 message: "Student not found"
             });
 
-        const appointments=await Appointment.find({student:id}).sort({startTime:-1}).populate("faculty","name email");
+        const appointments = await Appointment.find({ student: id }).sort({ startTime: -1 }).populate("faculty", "name email");
 
         return res.status(200).json({
-            success:true,
-            count:appointments.length,
+            success: true,
+            count: appointments.length,
             appointments
         });
 
@@ -148,21 +154,21 @@ export const getStudentAppointments = async (req, res) => {
 
 export const getFacultyAppointments = async (req, res) => {
     try {
-        const id = req.params.facultyID;
+        const id = req.params.id;
 
         const faculty = await User.findById(id);
 
         if (!faculty || faculty.role !== "faculty")
             return res.status(404).json({
-                success:false,
+                success: false,
                 message: "Faculty not found"
             });
 
-        const appointments=await Appointment.find({faculty:id}).sort({startTime:-1}).populate("student","name email");
+        const appointments = await Appointment.find({ faculty: id }).sort({ startTime: -1 }).populate("student", "name email");
 
         return res.status(200).json({
-            success:true,
-            count:appointments.length,
+            success: true,
+            count: appointments.length,
             appointments
         });
 
@@ -175,5 +181,145 @@ export const getFacultyAppointments = async (req, res) => {
 
 // Appointment status update
 
+export const updateAppointmentStatus = async (req, res) => {
+    try {
+        const id = req.params.id;
 
+        const appointment = await Appointment.findById(id);
+
+        if (!appointment)
+            return res.status(404).json({
+                success: false,
+                message: "Appointment not found"
+            });
+
+        const { status, userID, reason } = req.body;
+
+        const user = await User.findById(userID);
+
+        if (!user)
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+
+        if (user.role === "student") {
+            if (appointment.student.toString() !== userID)
+                return res.status(403).json({
+                    success: false,
+                    message: "This appointment belongs to another Student"
+                });
+
+            if (!["pending", "approved"].includes(appointment.status))
+                return res.status(400).json({
+                    success: false,
+                    message: "Cannot cancel this appointment"
+                });
+
+            if (appointment.cancelRequestedByStudent)
+                return res.status(400).json({
+                    success: false,
+                    message: "Cancellation already requested"
+                });
+
+            if (!reason)
+                return res.status(400).json({
+                    success: false,
+                    message: "Reason required"
+                });
+            appointment.cancelRequestedByStudent = true;
+            appointment.studentCancelReason = reason;
+
+            await appointment.save();
+            return res.status(200).json({
+                success: true,
+                message: "Cancellation request sent to faculty",
+                appointment
+            });
+        }
+
+        if (user.role === "faculty") {
+            if (appointment.faculty.toString() !== userID)
+                return res.status(403).json({
+                    success: false,
+                    message: "This appointment belongs to another Faculty"
+                });
+
+            if (appointment.endTime < new Date())
+                return res.status(400).json({
+                    success: false,
+                    message: "Cannot modify past appointments"
+                });
+
+            if (["completed", "rejected", "cancelled"].includes(appointment.status))
+                return res.status(400).json({
+                    success: false,
+                    message: "Appointment already finished"
+                });
+
+            if (!status)
+                return res.status(400).json({
+                    success: false,
+                    message: "Valid status required"
+                });
+
+            if (appointment.status === "pending") {
+                if (!["approved", "rejected"].includes(status))
+                    return res.status(400).json({
+                        success: false,
+                        message: "Pending appointment can only be rejected or approved"
+                    });
+
+                if (status === "approved") {
+                    appointment.cancelRequestedByStudent = false;
+                    appointment.studentCancelReason = null;
+                }
+
+                if (status === "rejected") {
+                    if (!reason)
+                        return res.status(400).json({
+                            success: false,
+                            message: "Rejection requires reason"
+                        });
+                    appointment.rejectionReason = reason;
+                }
+            }
+            else if (appointment.status === "approved") {
+                if (!["completed", "cancelled"].includes(status))
+                    return res.status(400).json({
+                        success: false,
+                        message: "Approved appointments can only be completed or cancelled"
+                    });
+
+                if (status === "cancelled") {
+                    if (!reason)
+                        return res.status(400).json({
+                            success: false,
+                            message: "Cancellation requires reason"
+                        });
+                    appointment.facultyCancelReason = reason;
+                    appointment.cancelRequestedByStudent = false;
+                }
+            }
+
+            appointment.status = status;
+
+            await appointment.save();
+
+            return res.status(200).json({
+                success: true,
+                message: "Appointment status updated successfully"
+            });
+        }
+
+        return res.status(403).json({
+            success: false,
+            message: "Unauthorized role"
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        });
+    }
+};
 

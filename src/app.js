@@ -7,6 +7,7 @@ import repositoryRoutes from "./routes/repository.routes.js";
 import materialRoutes from "./routes/material.routes.js";
 import assignmentRoutes from "./routes/assignment.routes.js";
 import scheduleRoutes from "./routes/schedule.routes.js";
+import appointmentRoutes from "./routes/appointment.routes.js";
 
 const app=express();
 
@@ -42,5 +43,9 @@ app.use("/api",assignmentRoutes);
 // Schedule routes
 
 app.use("/api",scheduleRoutes);
+
+// Appointment routes
+
+app.use("/api",appointmentRoutes);
 
 export default app;
