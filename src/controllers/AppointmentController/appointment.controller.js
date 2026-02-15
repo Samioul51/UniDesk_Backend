@@ -323,3 +323,52 @@ export const updateAppointmentStatus = async (req, res) => {
     }
 };
 
+// Get single appointment
+
+export const getAppointment = async (req, res) => {
+    try {
+        const id = req.params.id;
+
+        const { userID } = req.query;
+
+        if (!userID)
+            return res.status(404).json({
+                success: false,
+                message: "User ID required"
+            });
+
+        const user = await User.findById(userID);
+
+        if (!user)
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+
+        const appointment = await Appointment.findById(id).populate("faculty", "name email").populate("student", "name email");
+
+        if (!appointment)
+            return res.status(404).json({
+                success: false,
+                message: "Appointment not found"
+            });
+
+        const isOwner =(appointment.student._id.toString() === userID) || (appointment.faculty._id.toString() === userID);
+
+        if (!isOwner)
+            return res.status(403).json({
+                success: false,
+                message: "You are not allowed to view this appointment"
+            });
+
+        return res.status(200).json({
+            success: true,
+            appointment
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        });
+    }
+};
+
