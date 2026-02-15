@@ -1,7 +1,7 @@
 import mongoose, { Schema } from "mongoose";
 
 const appointmentSchema=new Schema({
-    teacher:{
+    faculty:{
         type:Schema.Types.ObjectId,
         ref:"User",
         required:true,
@@ -36,7 +36,7 @@ const appointmentSchema=new Schema({
 });
 
 appointmentSchema.index(
-  { teacher: 1, startTime: 1, endTime: 1 },
+  { faculty: 1, startTime: 1, endTime: 1 },
   { unique: false }
 );
 
