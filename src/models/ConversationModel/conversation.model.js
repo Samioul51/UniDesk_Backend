@@ -13,6 +13,9 @@ const conversationSchema=new Schema({
     timestamps:true
 });
 
-conversationSchema.index({participants:1})
+conversationSchema.index(
+    {participants:1},
+    {unique:true}    
+);
 
 export const Conversation=mongoose.model("Conversation",conversationSchema);

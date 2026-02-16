@@ -6,7 +6,7 @@ const announcementSchema = new Schema({
         type: Schema.Types.ObjectId,
         required: true,
         index: true,
-        ref: "courses"
+        ref: "Course"
     },
     title: {
         type: String,
@@ -18,7 +18,7 @@ const announcementSchema = new Schema({
     },
     teacher: {
         type: Schema.Types.ObjectId,
-        ref: "users",
+        ref: "User",
         required: true
     },
     attachments:[{
@@ -35,4 +35,4 @@ const announcementSchema = new Schema({
     }
 });
 
-export const Announcement = mongoose.model("announcements", announcementSchema);
+export const Announcement = mongoose.model("Announcement", announcementSchema);

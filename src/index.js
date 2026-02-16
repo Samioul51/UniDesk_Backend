@@ -1,16 +1,37 @@
 import dotenv from 'dotenv';
 import connectDB from './db/dbConnect.js';
 import app from './app.js';
+import http from "http";
+import { Server } from 'socket.io';
 
 dotenv.config();
 
 const port = process.env.PORT || 3000;
 
+const server=http.createServer(app);
+
+// Socket IO server
+
+export const io=new Server(server,{
+    cors:{
+        origin:"*",
+        methods:["GET","POST"]
+    }
+});
+
+io.on("connection",(socket)=>{
+    console.log("User connected: ",socket.id);
+
+    socket.on("disconnect",()=>{
+        console.log("User disconnected: ",socket.id);
+    });
+});
+
 // MongoDB Connection
 
 connectDB()
     .then(() => {
-        app.listen(port, () => {
+        server.listen(port, () => {
             console.log(`Server running on ${port}`);
         });
 

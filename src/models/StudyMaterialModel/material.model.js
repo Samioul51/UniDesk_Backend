@@ -4,7 +4,7 @@ import mongoose, { Schema } from "mongoose";
 const materialSchema=new Schema({
     course:{
         type:Schema.Types.ObjectId,
-        ref:"courses",
+        ref:"Course",
         required:true
     },
     title:{
@@ -22,7 +22,7 @@ const materialSchema=new Schema({
     },
     uploader:{
         type:Schema.Types.ObjectId,
-        ref:"users",
+        ref:"User",
         required:true
     },
     createdAt:{
@@ -31,4 +31,4 @@ const materialSchema=new Schema({
     }
 });
 
-export const Material=mongoose.model("materials",materialSchema);
+export const Material=mongoose.model("Material",materialSchema);
