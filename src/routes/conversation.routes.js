@@ -1,5 +1,5 @@
 import express from "express";
-import { createConversation, getConversation, getMessages, getUserConversations, sendMessage } from "../controllers/ConversationController/conversation.controller.js";
+import { createConversation, getConversation, getMessages, getUserConversations, messageSeenStatus, sendMessage } from "../controllers/ConversationController/conversation.controller.js";
 
 const router=express.Router();
 
@@ -22,5 +22,9 @@ router.get("/conversation/messages/:conversationID",getMessages);
 // Send messages
 
 router.post("/messages",sendMessage);
+
+// Seen status
+
+router.patch("/messages/read/:conversationID",messageSeenStatus);
 
 export default router;

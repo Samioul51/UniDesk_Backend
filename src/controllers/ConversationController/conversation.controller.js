@@ -181,7 +181,7 @@ export const sendMessage = async (req, res) => {
 
         if (!conversationID || !senderID || !content)
             return res.status(400).json({
-                success:false,
+                success: false,
                 message: "All fields required"
             });
 
@@ -193,9 +193,9 @@ export const sendMessage = async (req, res) => {
                 message: "Conversation not found"
             });
 
-        const sender=await User.findById(senderID);
+        const sender = await User.findById(senderID);
 
-        if(!sender)
+        if (!sender)
             return res.status(404).json({
                 success: false,
                 message: "User not found"
@@ -211,32 +211,85 @@ export const sendMessage = async (req, res) => {
                 message: "Unauthorized user"
             });
 
-        const message=await Message.create({
-            conversation:conversationID,
-            sender:senderID,
+        const message = await Message.create({
+            conversation: conversationID,
+            sender: senderID,
             content
         });
 
-        conversation.lastMessage=message._id;
+        conversation.lastMessage = message._id;
 
         await conversation.save();
 
-        const populatedMessage=await Message.findById(message._id).populate("sender","name email");
+        const populatedMessage = await Message.findById(message._id).populate("sender", "name email");
 
-        const receiverID=conversation.participants.find(
-            p=>p.toString()!==senderID
+        const receiverID = conversation.participants.find(
+            p => p.toString() !== senderID
         );
 
-        io.to(receiverID.toString()).emit("newMessage",populatedMessage);
-        
-        io.to(senderID.toString()).emit("newMessage",populatedMessage);
+        io.to(receiverID.toString()).emit("newMessage", populatedMessage);
+
+        io.to(senderID.toString()).emit("newMessage", populatedMessage);
 
         return res.status(201).json({
             success: true,
-            message:"Message sent",
-            data:populatedMessage
+            message: "Message sent",
+            data: populatedMessage
         });
-        
+
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        });
+    }
+};
+
+// Seen status
+
+export const messageSeenStatus = async (req, res) => {
+    try {
+        const id = req.params.conversationID;
+        const { userID } = req.body;
+
+        if (!userID)
+            return res.status(400).json({
+                success:false,
+                message: "User ID required"
+            });
+
+        const conversation = await Conversation.findById(id);
+
+        if (!conversation)
+            return res.status(404).json({
+                success: false,
+                message: "Conversation not found"
+            });
+
+        const isParticipant = conversation.participants.some(
+            p => p.toString() === userID
+        );
+
+        if (!isParticipant)
+            return res.status(403).json({
+                success: false,
+                message: "Unauthorized user"
+            });
+
+        await Message.updateMany(
+            {
+                conversation:id,
+                sender:{$ne:userID},
+                isRead:false
+            },
+            {
+                $set:{isRead:true}
+            }
+        );
+
+        return res.status(200).json({
+            success:true,
+            message: "Messages marked as read"
+        });
     } catch (error) {
         return res.status(500).json({
             message: error.message
