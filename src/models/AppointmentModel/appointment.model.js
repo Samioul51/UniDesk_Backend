@@ -26,6 +26,23 @@ const appointmentSchema=new Schema({
         required:true,
         trim:true
     },
+    mode:{
+        type:String,
+        enum:["online","in-person"],
+        required:true
+    },
+    meetLink:{
+        type:String,
+        validate:{
+            validator:function(value){
+                if(this.mode==="online")
+                    return !!value;
+                return true;
+            },
+            message:"Meet link is required for online appointments"
+        }
+    },
+    meetingID:String,
     status:{
         type:String,
         enum:["pending","approved","completed","rejected","cancelled"],

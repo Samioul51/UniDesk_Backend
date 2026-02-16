@@ -41,6 +41,13 @@ const userSchema = new Schema({
             return this.role === "faculty";
         }
     },
+    room:{
+        type: String,
+        required: function () {
+            return this.role === "faculty";
+        },
+        trim:true
+    },
     photoURL: {
         type: String,
         required: true,

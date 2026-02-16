@@ -5,8 +5,8 @@ const supervisorSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: "User",
         required: true,
-        unique:true,
-        index:true
+        unique: true,
+        index: true
     },
     supervises: [{
         student: {
@@ -23,11 +23,26 @@ const supervisorSchema = new Schema({
             type: String,
             required: true,
             enum: ["thesis", "project"]
-        }
+        },
+        topic: {
+            type: String,
+            required: true
+        },
+        description: {
+            type: String,
+            required: true
+        },
+        lastMeetingAt:Date,
+        nextMeetingAt:Date
     }
     ]
 }, {
     timestamps: true
 });
+
+supervisorSchema.index(
+    { supervisor: 1, "supervises.student": 1 },
+    { unique: true }
+)
 
 export const Supervisor = mongoose.model("Supervisor", supervisorSchema);

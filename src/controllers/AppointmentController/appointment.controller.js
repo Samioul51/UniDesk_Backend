@@ -1,17 +1,24 @@
 import { User } from "../../models/UserModel/user.model.js";
 import { Appointment } from "../../models/AppointmentModel/appointment.model.js";
 import { Schedule } from "../../models/ScheduleModel/schedule.model.js";
+import { createMeeting } from "../../utils/MeetLinkGeneration/meetLinkGeneration.js";
 
 // Appointment booking
 
 export const bookAppointment = async (req, res) => {
     try {
-        const { facultyID, studentID, date, startTime, endTime, purpose } = req.body;
+        const { facultyID, studentID, date, startTime, endTime, purpose, mode } = req.body;
 
         if (!facultyID || !studentID || !date || !startTime || !endTime || !purpose)
             return res.status(400).json({
                 success: false,
                 message: "All fields required"
+            });
+
+        if (!mode || !["online", "in-person"].includes(mode))
+            return res.status(400).json({
+                success: false,
+                message: "Appointment mode required"
             });
 
         const faculty = await User.findById(facultyID);
@@ -106,7 +113,8 @@ export const bookAppointment = async (req, res) => {
             student: studentID,
             startTime: requestedStart,
             endTime: requestedEnd,
-            purpose
+            purpose,
+            mode
         });
 
         return res.status(201).json({
@@ -135,7 +143,7 @@ export const getStudentAppointments = async (req, res) => {
                 message: "Student not found"
             });
 
-        const appointments = await Appointment.find({ student: id }).sort({ startTime: -1 }).populate("faculty", "name email");
+        const appointments = await Appointment.find({ student: id }).sort({ startTime: -1 }).populate("faculty", "name email room");
 
         return res.status(200).json({
             success: true,
@@ -273,6 +281,11 @@ export const updateAppointmentStatus = async (req, res) => {
                 if (status === "approved") {
                     appointment.cancelRequestedByStudent = false;
                     appointment.studentCancelReason = null;
+
+                    if (appointment.mode === "online") {
+                        const meetLink = createMeeting();
+                        appointment.meetLink = meetLink;
+                    }
                 }
 
                 if (status === "rejected") {
@@ -345,7 +358,7 @@ export const getAppointment = async (req, res) => {
                 message: "User not found"
             });
 
-        const appointment = await Appointment.findById(id).populate("faculty", "name email").populate("student", "name email");
+        const appointment = await Appointment.findById(id).populate("faculty", "name email room").populate("student", "name email");
 
         if (!appointment)
             return res.status(404).json({
@@ -353,7 +366,7 @@ export const getAppointment = async (req, res) => {
                 message: "Appointment not found"
             });
 
-        const isOwner =(appointment.student._id.toString() === userID) || (appointment.faculty._id.toString() === userID);
+        const isOwner = (appointment.student._id.toString() === userID) || (appointment.faculty._id.toString() === userID);
 
         if (!isOwner)
             return res.status(403).json({

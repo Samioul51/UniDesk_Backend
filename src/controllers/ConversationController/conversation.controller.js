@@ -286,6 +286,15 @@ export const messageSeenStatus = async (req, res) => {
             }
         );
 
+        const receiverID = conversation.participants.find(
+            p => p.toString() !== userID
+        );
+
+        io.to(receiverID.toString()).emit("messageSeen", {
+            conversationID:id,
+            seenBy:userID
+        });
+
         return res.status(200).json({
             success:true,
             message: "Messages marked as read"

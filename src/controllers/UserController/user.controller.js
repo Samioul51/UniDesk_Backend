@@ -13,7 +13,11 @@ export const createUser = async (req, res) => {
 
         const user = await User.create(newUser);
 
-        return res.status(201).json(user);
+        return res.status(201).json({
+            success:true,
+            message:"User created successfully",
+            user
+        });
     }
     catch (error) {
         return res.status(400).json({ message: error.message });
@@ -56,9 +60,9 @@ export const getSingleUser = async (req, res) => {
 export const updateProfile = async (req, res) => {
     try {
         const email = req.params.email;
-        const { name, photoURL } = req.body;
+        const { name, photoURL,room } = req.body;
 
-        if (!name && !photoURL)
+        if (!name && !photoURL && !room)
             return res.status(400).json({
                 success: false,
                 message: "At least one field is required to update profile"
@@ -69,6 +73,8 @@ export const updateProfile = async (req, res) => {
             updatedFields.name = name;
         if (photoURL)
             updatedFields.photoURL = photoURL;
+        if(room)
+            updatedFields.room=room;
 
         const result = await User.updateOne(
             { email },
@@ -103,8 +109,8 @@ export const updateProfile = async (req, res) => {
 export const adminUpdateProfile=async(req,res)=>{
     try {
         const email=req.params.email;
-        const {name,photoURL,status}=req.body;
-        if (!name && !photoURL && !status)
+        const {name,photoURL,status,room}=req.body;
+        if (!name && !photoURL && !status && !room)
             return res.status(400).json({
                 success: false,
                 message: "At least one field is required to update profile"
@@ -127,6 +133,8 @@ export const adminUpdateProfile=async(req,res)=>{
             updatedFields.photoURL = photoURL;
         if(cleanStatus)
             updatedFields.status=cleanStatus;
+        if(room)
+            updatedFields.room=room;
 
         const result = await User.updateOne(
             { email },
