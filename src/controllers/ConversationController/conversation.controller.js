@@ -58,22 +58,64 @@ export const createConversation = async (req, res) => {
 
 export const getUserConversations = async (req, res) => {
     try {
-        const id=req.params.id;
+        const id = req.params.id;
 
-        const user=await User.findById(id);
+        const user = await User.findById(id);
 
-        if(!user)
+        if (!user)
             return res.status(404).json({
                 success: false,
                 message: "User not found"
             });
 
-        const conversations=await Conversation.find({participants:{$in:[id]}}).populate("participants","name email").populate("lastMessage").sort({updatedAt:-1});
+        const conversations = await Conversation.find({ participants: { $in: [id] } }).populate("participants", "name email").populate("lastMessage").sort({ updatedAt: -1 });
 
         return res.status(200).json({
-            success:true,
-            count:conversations.length,
+            success: true,
+            count: conversations.length,
             conversations
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        });
+    }
+};
+
+// Specific conversation
+
+export const getConversation = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const { userID } = req.query;
+
+        if (!userID)
+            return res.status(400).json({
+                success: false,
+                message: "User ID required"
+            });
+
+        const conversation = await Conversation.findById(id).populate("participants", "name email").populate("lastMessage");
+
+        if (!conversation)
+            return res.status(404).json({
+                success: false,
+                message: "Conversation not found"
+            });
+
+        const isParticipant = conversation.participants.some(
+            p => p._id.toString() === userID
+        );
+
+        if (!isParticipant)
+            return res.status(403).json({
+                success: false,
+                message:"Unauthorized user"
+            });
+
+        return res.status(200).json({
+            success: true,
+            conversation
         });
     } catch (error) {
         return res.status(500).json({
