@@ -1,5 +1,5 @@
 import express from "express";
-import { createConversation, getConversation, getUserConversations } from "../controllers/ConversationController/conversation.controller.js";
+import { createConversation, getConversation, getMessages, getUserConversations, sendMessage } from "../controllers/ConversationController/conversation.controller.js";
 
 const router=express.Router();
 
@@ -14,5 +14,13 @@ router.get("/conversation/user/:id",getUserConversations);
 // Specific conversation
 
 router.get("/conversation/:id",getConversation);
+
+// Get messages
+
+router.get("/conversation/messages/:conversationID",getMessages);
+
+// Send messages
+
+router.post("/messages",sendMessage);
 
 export default router;

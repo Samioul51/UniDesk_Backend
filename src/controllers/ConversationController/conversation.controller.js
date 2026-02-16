@@ -1,4 +1,6 @@
+import { io } from "../../index.js";
 import { Conversation } from "../../models/ConversationModel/conversation.model.js";
+import { Message } from "../../models/MessageModel/message.model.js";
 import { User } from "../../models/UserModel/user.model.js";
 
 // Creating conversation
@@ -110,13 +112,131 @@ export const getConversation = async (req, res) => {
         if (!isParticipant)
             return res.status(403).json({
                 success: false,
-                message:"Unauthorized user"
+                message: "Unauthorized user"
             });
 
         return res.status(200).json({
             success: true,
             conversation
         });
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        });
+    }
+};
+
+// Get messages
+
+export const getMessages = async (req, res) => {
+    try {
+        const id = req.params.conversationID;
+        const { userID, page = 1, limit = 10 } = req.query;
+        const skip = (page - 1) * limit;
+
+        if (!userID)
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+
+        const conversation = await Conversation.findById(id);
+
+        if (!conversation)
+            return res.status(404).json({
+                success: false,
+                message: "Conversation not found"
+            });
+
+        const isParticipant = conversation.participants.some(
+            p => p.toString() === userID
+        );
+
+        if (!isParticipant)
+            return res.status(403).json({
+                success: false,
+                message: "Unauthorized user"
+            });
+
+        const messages = await Message.find({ conversation: id }).sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit)).populate("sender", "name email");
+
+        return res.status(200).json({
+            success: true,
+            page: parseInt(page),
+            count: messages.length,
+            messages
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        });
+    }
+};
+
+// Sending messages
+
+export const sendMessage = async (req, res) => {
+    try {
+        const { conversationID, senderID, content } = req.body;
+
+        if (!conversationID || !senderID || !content)
+            return res.status(400).json({
+                success:false,
+                message: "All fields required"
+            });
+
+        const conversation = await Conversation.findById(conversationID);
+
+        if (!conversation)
+            return res.status(404).json({
+                success: false,
+                message: "Conversation not found"
+            });
+
+        const sender=await User.findById(senderID);
+
+        if(!sender)
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+
+        const isParticipant = conversation.participants.some(
+            p => p.toString() === senderID
+        );
+
+        if (!isParticipant)
+            return res.status(403).json({
+                success: false,
+                message: "Unauthorized user"
+            });
+
+        const message=await Message.create({
+            conversation:conversationID,
+            sender:senderID,
+            content
+        });
+
+        conversation.lastMessage=message._id;
+
+        await conversation.save();
+
+        const populatedMessage=await Message.findById(message._id).populate("sender","name email");
+
+        const receiverID=conversation.participants.find(
+            p=>p.toString()!==senderID
+        );
+
+        io.to(receiverID.toString()).emit("newMessage",populatedMessage);
+        
+        io.to(senderID.toString()).emit("newMessage",populatedMessage);
+
+        return res.status(201).json({
+            success: true,
+            message:"Message sent",
+            data:populatedMessage
+        });
+        
     } catch (error) {
         return res.status(500).json({
             message: error.message
