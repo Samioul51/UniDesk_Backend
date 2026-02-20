@@ -138,7 +138,7 @@ export const getSupervises = async (req, res) => {
 
 // Get student supervisors
 
-export const getSupervisors=async(req,res)=>{
+export const getSupervisors = async (req, res) => {
     try {
         const studentID = req.params.studentID;
 
@@ -159,8 +159,8 @@ export const getSupervisors=async(req,res)=>{
                 supervisors: []
             });
 
-        const relationships=supervisorDoc.supervises.filter(
-            item=>item.student.toString()===studentID
+        const relationships = supervisorDoc.supervises.filter(
+            item => item.student.toString() === studentID
         );
 
         const result = await Promise.all(
@@ -198,6 +198,59 @@ export const getSupervisors=async(req,res)=>{
             supervisors: result
         });
 
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        });
+    }
+};
+
+// Update supervisee status
+
+export const updateSuperViseeStatus = async (req, res) => {
+    try {
+        const supervisorID = req.params.supervisorID;
+        const { studentID, relationshipType, status } = req.body;
+
+        if (!studentID || !relationshipType || !status)
+            return res.status(400).json({
+                success: false,
+                message: "All fields required"
+            });
+
+        if (!["active", "completed"].includes(status))
+            return res.status(400).json({
+                success: false,
+                message: "Invalid status"
+            });
+
+        const supervisorDoc = await Supervisor.findOne({ supervisor: supervisorID });
+
+        if (!supervisorDoc)
+            return res.status(404).json({
+                success: false,
+                message: "No supervisor record found"
+            });
+
+        const relation = supervisorDoc.supervises.find(
+            s => s.student.toString() === studentID &&
+                s.relationshipType === relationshipType
+        );
+
+        if (!relation)
+            return res.status(404).json({
+                success: false,
+                message: "Supervisee relationship not found"
+            });
+
+        relation.status=status;
+
+        await supervisorDoc.save();
+
+        return res.status(200).json({
+            success:true,
+            message:"Supervisee status updated"
+        });
     } catch (error) {
         return res.status(500).json({
             message: error.message
