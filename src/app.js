@@ -9,6 +9,7 @@ import assignmentRoutes from "./routes/assignment.routes.js";
 import scheduleRoutes from "./routes/schedule.routes.js";
 import appointmentRoutes from "./routes/appointment.routes.js";
 import conversationRoutes from "./routes/conversation.routes.js";
+import supervisorRoutes from "./routes/supervisor.routes.js";
 
 const app=express();
 
@@ -52,5 +53,9 @@ app.use("/api",appointmentRoutes);
 // Conversation routes
 
 app.use("/api",conversationRoutes);
+
+// Supervisor routes
+
+app.use("/api",supervisorRoutes);
 
 export default app;
