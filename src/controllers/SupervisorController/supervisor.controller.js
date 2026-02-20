@@ -135,3 +135,72 @@ export const getSupervises = async (req, res) => {
         });
     }
 };
+
+// Get student supervisors
+
+export const getSupervisors=async(req,res)=>{
+    try {
+        const studentID = req.params.studentID;
+
+        const student = await User.findById(studentID);
+
+        if (!student)
+            return res.status(404).json({
+                success: false,
+                message: "Student not found"
+            });
+
+        const supervisorDoc = await Supervisor.findOne({ "supervises.student": studentID }).populate("supervisor", "name email");
+
+        if (!supervisorDoc)
+            return res.status(200).json({
+                success: true,
+                count: 0,
+                supervisors: []
+            });
+
+        const relationships=supervisorDoc.supervises.filter(
+            item=>item.student.toString()===studentID
+        );
+
+        const result = await Promise.all(
+            relationships.map(async (item) => {
+                const nextMeeting = await Appointment.findOne({
+                    faculty: supervisorDoc.supervisor._id,
+                    student: studentID,
+                    meetingType: item.relationshipType,
+                    status: "approved",
+                    startTime: { $gt: new Date() }
+                }).sort({ startTime: 1 });
+
+                const lastMeeting = await Appointment.findOne({
+                    faculty: supervisorDoc.supervisor._id,
+                    student: studentID,
+                    meetingType: item.relationshipType,
+                    status: "completed",
+                    startTime: { $lt: new Date() }
+                }).sort({ startTime: -1 });
+
+                return {
+                    supervisor: supervisorDoc.supervisor,
+                    relationshipType: item.relationshipType,
+                    topic: item.topic,
+                    description: item.description,
+                    lastMeetingAt: lastMeeting ? lastMeeting.startTime : null,
+                    nextMeetingAt: nextMeeting ? nextMeeting.startTime : null
+                };
+            })
+        );
+
+        return res.status(200).json({
+            success: true,
+            count: result.length,
+            supervisors: result
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        });
+    }
+};
