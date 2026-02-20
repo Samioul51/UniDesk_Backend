@@ -237,19 +237,79 @@ export const updateSuperViseeStatus = async (req, res) => {
                 s.relationshipType === relationshipType
         );
 
+        if (relation.status === "completed" && status === "active")
+            return res.status(400).json({
+                success: false,
+                message: "Completed status cannot be changed to active"
+            });
         if (!relation)
             return res.status(404).json({
                 success: false,
                 message: "Supervisee relationship not found"
             });
 
-        relation.status=status;
+        relation.status = status;
 
         await supervisorDoc.save();
 
         return res.status(200).json({
-            success:true,
-            message:"Supervisee status updated"
+            success: true,
+            message: "Supervisee status updated"
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        });
+    }
+};
+
+// Remove supervisee
+
+export const removeSupervisee = async (req, res) => {
+    try {
+        const supervisorID = req.params.supervisorID;
+        const { studentID, relationshipType } = req.body;
+
+        if (!studentID || !relationshipType)
+            return res.status(400).json({
+                success: false,
+                message: "All fields required"
+            });
+
+        const supervisorDoc = await Supervisor.findOne({ supervisor: supervisorID });
+
+        if (!supervisorDoc)
+            return res.status(404).json({
+                success: false,
+                message: "No supervisor record found"
+            });
+
+        const relation = supervisorDoc.supervises.find(
+            s => s.student.toString() === studentID &&
+                s.relationshipType === relationshipType
+        );
+
+        if (!relation)
+            return res.status(404).json({
+                success: false,
+                message: "Supervisee relationship not found"
+            });
+
+        await Supervisor.updateOne(
+            { supervisor: supervisorID },
+            {
+                $pull: {
+                    supervises: {
+                        student: studentID,
+                        relationshipType: relationshipType
+                    }
+                }
+            }
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Supervisee removed successfully"
         });
     } catch (error) {
         return res.status(500).json({
