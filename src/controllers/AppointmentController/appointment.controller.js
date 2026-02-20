@@ -1,13 +1,14 @@
 import { User } from "../../models/UserModel/user.model.js";
 import { Appointment } from "../../models/AppointmentModel/appointment.model.js";
 import { Schedule } from "../../models/ScheduleModel/schedule.model.js";
+import { Supervisor } from "../../models/SupervisorModel/supervisor.model.js";
 import { createMeeting } from "../../utils/MeetLinkGeneration/meetLinkGeneration.js";
 
 // Appointment booking
 
 export const bookAppointment = async (req, res) => {
     try {
-        const { facultyID, studentID, date, startTime, endTime, purpose, mode } = req.body;
+        const { facultyID, studentID, date, startTime, endTime, purpose, mode, meetingType } = req.body;
 
         if (!facultyID || !studentID || !date || !startTime || !endTime || !purpose)
             return res.status(400).json({
@@ -108,13 +109,27 @@ export const bookAppointment = async (req, res) => {
                 message: "Faculty already has an appointment in this time slot"
             });
 
+        const supervisorDoc = await Supervisor.findOne({
+            supervisor: facultyID,
+            "supervises.student": studentID
+        });
+
+        const isSupervisee = !!supervisorDoc;
+
+        if (!isSupervisee && ["thesis", "project"].includes(meetingType))
+            return res.status(403).json({
+                success: false,
+                message: "Only supervises can book thesis or project meetings"
+            });
+
         const appointment = await Appointment.create({
             faculty: facultyID,
             student: studentID,
             startTime: requestedStart,
             endTime: requestedEnd,
             purpose,
-            mode
+            mode,
+            meetingType
         });
 
         return res.status(201).json({

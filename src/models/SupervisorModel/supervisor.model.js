@@ -31,9 +31,7 @@ const supervisorSchema = new Schema({
         description: {
             type: String,
             required: true
-        },
-        lastMeetingAt:Date,
-        nextMeetingAt:Date
+        }
     }
     ]
 }, {

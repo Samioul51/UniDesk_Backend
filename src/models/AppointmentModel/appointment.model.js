@@ -26,10 +26,17 @@ const appointmentSchema=new Schema({
         required:true,
         trim:true
     },
+    meetingType:{
+        type:String,
+        enum:["general","thesis","project"],
+        default:"general"
+    },
     mode:{
         type:String,
         enum:["online","in-person"],
-        required:true
+        required:function(){
+            return this.isNew;
+        }
     },
     meetLink:{
         type:String,

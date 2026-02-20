@@ -1,5 +1,6 @@
 import { Supervisor } from "../../models/SupervisorModel/supervisor.model.js";
 import { User } from "../../models/UserModel/user.model.js";
+import { Appointment } from "../../models/AppointmentModel/appointment.model.js";
 
 // Assigning supervisee
 
@@ -63,6 +64,70 @@ export const assignSupervisee = async (req, res) => {
         return res.status(201).json({
             success: true,
             message: "Supervisee assigned successfully"
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        });
+    }
+};
+
+// Get faculty supervises
+
+export const getSupervises = async (req, res) => {
+    try {
+        const supervisorID = req.params.supervisorID;
+
+        const supervisor = await User.findById(supervisorID);
+
+        if (!supervisor)
+            return res.status(404).json({
+                success: false,
+                message: "Supervisor not found"
+            });
+
+        const supervisorDoc = await Supervisor.findOne({ supervisor: supervisorID }).populate("supervises.student", "name email");
+
+        if (!supervisorDoc)
+            return res.status(200).json({
+                success: true,
+                count: 0,
+                supervises: []
+            });
+
+        const result = await Promise.all(
+            supervisorDoc.supervises.map(async (item) => {
+                const nextMeeting = await Appointment.findOne({
+                    faculty: supervisorID,
+                    student: item.student._id,
+                    meetingType: item.relationshipType,
+                    status: "approved",
+                    startTime: { $gt: new Date() }
+                }).sort({ startTime: 1 });
+
+                const lastMeeting = await Appointment.findOne({
+                    faculty: supervisorID,
+                    student: item.student._id,
+                    meetingType: item.relationshipType,
+                    status: "completed",
+                    startTime: { $lt: new Date() }
+                }).sort({ startTime: -1 });
+
+                return {
+                    student: item.student,
+                    relationshipType: item.relationshipType,
+                    topic: item.topic,
+                    description: item.description,
+                    lastMeetingAt: lastMeeting ? lastMeeting.startTime : null,
+                    nextMeetingAt: nextMeeting ? nextMeeting.startTime : null
+                };
+            })
+        );
+
+        return res.status(200).json({
+            success: true,
+            count: result.length,
+            supervises: result
         });
     } catch (error) {
         return res.status(500).json({
