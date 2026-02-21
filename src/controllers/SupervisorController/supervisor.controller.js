@@ -1,6 +1,8 @@
 import { Supervisor } from "../../models/SupervisorModel/supervisor.model.js";
 import { User } from "../../models/UserModel/user.model.js";
 import { Appointment } from "../../models/AppointmentModel/appointment.model.js";
+import { notifyUsers } from "../../utils/NotificationEngine/notificationService.js";
+import { notificationTypes } from "../../constants/notificationTypes.js";
 
 // Assigning supervisee
 
@@ -60,6 +62,16 @@ export const assignSupervisee = async (req, res) => {
         });
 
         await supervisorDoc.save();
+
+        await notifyUsers({
+            receivers: [studentID],
+            sender: supervisorID,
+            type: notificationTypes.supervisorAssigned,
+            title: "Supervisor Assigned",
+            message: "You have been assigned a supervisor.",
+            entityModel: "Supervisor",
+            redirectURL: "/supervisor"
+        });
 
         return res.status(201).json({
             success: true,

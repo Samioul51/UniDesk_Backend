@@ -1,6 +1,8 @@
+import { notificationTypes } from "../../constants/notificationTypes.js";
 import { Leaderboard } from "../../models/ContributionLeaderboardModel/leaderboard.model.js";
 import { Repository } from "../../models/RepositoryModel/repository.model.js";
 import { User } from "../../models/UserModel/user.model.js";
+import { notifyUsers } from "../../utils/NotificationEngine/notificationService.js";
 
 // Item upload
 
@@ -34,6 +36,20 @@ export const itemUpload = async (req, res) => {
             description,
             status: "pending"
         });
+
+        const admins = await User.find({ role: "admin" }).select("_id");
+
+        if (admins.length > 0) {
+            await notifyUsers({
+                receivers: admins.map(a => a._id),
+                sender: uploader,
+                type: notificationTypes.contributionPending,
+                title: "New Contribution Pending",
+                message: "A new repository item needs review.",
+                entityModel: "Repository",
+                redirectURL: "/admin/repository"
+            });
+        }
 
         return res.status(201).json({
             success: true,
@@ -176,6 +192,34 @@ export const itemStatusUpdate = async (req, res) => {
             { _id: id },
             { $set: updatedData }
         );
+
+        const updatedItem = await Repository.findById(id);
+
+        if (status === "approved") {
+            await notifyUsers({
+                receivers: [updatedItem.uploader],
+                sender: adminID,
+                type: notificationTypes.contributionApproved,
+                title: "Contribution Approved",
+                message: "Your uploaded item has been approved.",
+                entityID: updatedItem._id,
+                entityModel: "Repository",
+                redirectURL: `/repository/${updatedItem._id}`
+            });
+        }
+
+        if (status === "rejected") {
+            await notifyUsers({
+                receivers: [updatedItem.uploader],
+                sender: adminID,
+                type: notificationTypes.contributionRejected,
+                title: "Contribution Rejected",
+                message: "Your uploaded item was rejected.",
+                entityID: updatedItem._id,
+                entityModel: "Repository",
+                redirectURL: `/repository/${updatedItem._id}`
+            });
+        }
 
         return res.status(200).json({
             success: true,
