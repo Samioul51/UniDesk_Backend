@@ -251,11 +251,46 @@ export const createUser = async (req, res) => {
 
 export const getUsers = async (req, res) => {
     try {
-        const users = await User.find();
-        return res.status(200).json(users);
+        const { search, role, status, department } = req.query;
+
+        const page = Number(req.query.page) || 1;
+        const limit = Number(req.query.limit) || 10;
+
+        const query = {};
+
+        if (search)
+            query.$or = [
+                { name: { $regex: search, $options: "i" } },
+                { email: { $regex: search, $options: "i" } }
+            ];
+
+        if (role)
+            query.role = role;
+        if (status)
+            query.status = status;
+        if (department)
+            query.department = department;
+
+        const users = await User.find(query)
+            .skip((page - 1) * limit)
+            .limit(limit)
+            .select("-__v");
+
+        const totalUsers = await User.countDocuments(query);
+
+        return res.status(200).json({
+            success: true,
+            page,
+            totalPages: Math.ceil(totalUsers / limit),
+            totalUsers,
+            count: users.length,
+            users
+        });
     }
     catch (error) {
-        return res.status(400).json({ message: error.message });
+        return res.status(500).json({
+            message: error.message
+        });
     }
 };
 
@@ -263,18 +298,23 @@ export const getUsers = async (req, res) => {
 
 export const getSingleUser = async (req, res) => {
     try {
-        const email = req.params.email;
-        const user = await User.findOne({ email });
+        const email = req.params.email?.trim().toLowerCase();
+        const user = await User.findOne({ email }).select("-__v");
 
         if (!user)
-            return res.status(400).json({
+            return res.status(404).json({
                 success: false,
                 message: "User not found"
             });
 
-        return res.status(200).json(user);
+        return res.status(200).json({
+            success: true,
+            user
+        });
     } catch (error) {
-        return res.status(400).json({ message: error.message });
+        return res.status(500).json({
+            message: error.message
+        });
     }
 };
 
@@ -282,13 +322,19 @@ export const getSingleUser = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
     try {
-        const email = req.params.email;
+        const email = req.params.email?.trim().toLowerCase();
         const { name, photoURL, room } = req.body;
 
         if (!name && !photoURL && !room)
             return res.status(400).json({
                 success: false,
                 message: "At least one field is required to update profile"
+            });
+
+        if (room && user.role !== "faculty")
+            return res.status(403).json({
+                success: false,
+                message: "Only faculty can update room"
             });
 
         const updatedFields = {};
@@ -299,28 +345,24 @@ export const updateProfile = async (req, res) => {
         if (room)
             updatedFields.room = room;
 
-        const result = await User.updateOne(
+        const user = await User.findOneAndUpdate(
             { email },
             {
                 $set: updatedFields
-            }
-        );
+            },
+            { new: true }
+        ).select("-__v");
 
-        if (result.matchedCount === 0)
+        if (!user)
             return res.status(404).json({
                 success: false,
                 message: "No user found"
             });
 
-        if (result.modifiedCount === 0)
-            return res.status(200).json({
-                success: true,
-                message: "No changes were made"
-            });
-
         return res.status(200).json({
             success: true,
-            message: "Profile updated successfully"
+            message: "Profile updated successfully",
+            user
         });
     } catch (error) {
         return res.status(500).json({ message: error.message });
@@ -331,7 +373,7 @@ export const updateProfile = async (req, res) => {
 
 export const adminUpdateProfile = async (req, res) => {
     try {
-        const email = req.params.email;
+        const email = req.params.email?.trim().toLowerCase();
         const { name, photoURL, status, room } = req.body;
         if (!name && !photoURL && !status && !room)
             return res.status(400).json({
@@ -339,7 +381,7 @@ export const adminUpdateProfile = async (req, res) => {
                 message: "At least one field is required to update profile"
             });
 
-        const allowedStatus = ["active", "suspended"];
+        const allowedStatus = ["verified", "suspended"];
 
         const cleanStatus = typeof status === "string" ? status.trim() : null;
 
@@ -359,33 +401,31 @@ export const adminUpdateProfile = async (req, res) => {
         if (room)
             updatedFields.room = room;
 
-        const result = await User.updateOne(
+        const user = await User.findOneAndUpdate(
             { email },
             {
                 $set: updatedFields
-            }
-        );
+            },
+            { new: true }
+        ).select("-__v");
 
-        if (result.matchedCount === 0)
+        if (!user)
             return res.status(404).json({
                 success: false,
                 message: "No user found"
             });
 
-        if (result.modifiedCount === 0)
-            return res.status(200).json({
-                success: true,
-                message: "No changes were made"
-            });
-
         return res.status(200).json({
             success: true,
-            message: "Profile updated successfully"
+            message: "Profile updated successfully",
+            user
         });
 
 
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            message: error.message
+        });
     }
 };
 
@@ -393,7 +433,7 @@ export const adminUpdateProfile = async (req, res) => {
 
 export const adminDeleteUser = async (req, res) => {
     try {
-        const { email } = req.params;
+        const email = req.params.email?.trim().toLowerCase();
 
         const user = await User.findOne({ email });
 
@@ -416,6 +456,8 @@ export const adminDeleteUser = async (req, res) => {
             message: "User permanently deleted"
         });
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            message: error.message
+        });
     }
 };

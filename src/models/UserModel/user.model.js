@@ -17,7 +17,7 @@ const userSchema = new Schema({
     role: {
         type: String,
         required: true,
-        enum: ["student", "faculty"]
+        enum: ["student", "faculty","admin"]
     },
     department: {
         type: String,
@@ -58,7 +58,7 @@ const userSchema = new Schema({
     },
     status: {
         type: String,
-        enum:["pending","verified"],
+        enum:["pending","verified","suspended"],
         default:"pending"
     }
 },{
