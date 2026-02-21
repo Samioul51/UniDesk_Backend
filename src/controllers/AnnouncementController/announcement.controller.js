@@ -1,6 +1,8 @@
+import { notificationTypes } from "../../constants/notificationTypes.js";
 import { Announcement } from "../../models/AnnouncementModel/announcement.model.js";
 import { Course } from "../../models/CourseModel/course.model.js";
 import { User } from "../../models/UserModel/user.model.js";
+import { notifyUsers } from "../../utils/NotificationEngine/notificationService.js";
 
 // Announcement creation
 
@@ -48,6 +50,21 @@ export const createAnnouncement = async (req, res) => {
 
         const result = await Announcement.create(announcement);
 
+        const courseData = await Course.findById(course).select("students");
+
+        if (courseData && courseData.students.length > 0) {
+            await notifyUsers({
+                receivers: courseData.students,
+                sender: userID,
+                type: notificationTypes.newAnnouncement,
+                title: "New Announcement",
+                message: `${title}`,
+                entityID: result._id,
+                entityModel: "Announcement",
+                redirectURL: `/announcements/${result._id}`
+            });
+        }
+
         return res.status(201).json({
             success: true,
             message: "Announcement created successfully"
@@ -87,8 +104,8 @@ export const updateAnnouncement = async (req, res) => {
                 message: "You can only update your own announcements"
             });
 
-        const hasTitle = typeof title === "string" && title.trim() !== "" && title!==announcement.title;
-        const hasDescription = typeof description === "string" && description.trim() !== "" && description!==announcement.description;
+        const hasTitle = typeof title === "string" && title.trim() !== "" && title !== announcement.title;
+        const hasDescription = typeof description === "string" && description.trim() !== "" && description !== announcement.description;
         const hasAdd = Array.isArray(addAttachments) && addAttachments.length > 0;
         const hasRemove = Array.isArray(removeAttachments) && removeAttachments.length > 0;
 
@@ -123,6 +140,22 @@ export const updateAnnouncement = async (req, res) => {
                 { _id: id },
                 { $pull: { attachments: { url: { $in: removeAttachments } } } }
             );
+
+        // 🔔 notify course students about update
+        const courseData = await Course.findById(announcement.course).select("students");
+
+        if (courseData && courseData.students.length > 0) {
+            await notifyUsers({
+                receivers: courseData.students,
+                sender: userID,
+                type: notificationTypes.announcementUpdate, // you can add announcementUpdated later if you want
+                title: "Announcement Updated",
+                message: `${announcement.title} has been updated.`,
+                entityID: announcement._id,
+                entityModel: "Announcement",
+                redirectURL: `/announcements/${announcement._id}`
+            });
+        }
 
         return res.status(200).json({
             success: true,

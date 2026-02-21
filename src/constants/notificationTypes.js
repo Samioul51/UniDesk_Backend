@@ -3,6 +3,7 @@ export const notificationTypes={
     // Assignment related
 
     newAssignment:"NEW_ASSIGNMENT",
+    assignmentUpdate:"ASSIGNMENT_UPDATED",
     assignmentDueReminder:"ASSIGNMENT_DUE_REMINDER",
     gradePublished:"GRADE_PUBLISHED",
 
@@ -17,6 +18,7 @@ export const notificationTypes={
     // Announcement related
 
     newAnnouncement:"NEW_ANNOUNCEMENT",
+    announcementUpdate:"ANNOUNCEMENT_UPDATED",
 
     // Appointment related
 
