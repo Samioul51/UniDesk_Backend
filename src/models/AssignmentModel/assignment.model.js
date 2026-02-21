@@ -54,6 +54,10 @@ const assignmentSchema=new Schema({
             type:String
         }
     }],
+    reminderSent:{
+        type:Boolean,
+        default:false
+    },
     createdAt:{
         type:Date,
         default:Date.now

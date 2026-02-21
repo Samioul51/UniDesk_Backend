@@ -10,6 +10,7 @@ import scheduleRoutes from "./routes/schedule.routes.js";
 import appointmentRoutes from "./routes/appointment.routes.js";
 import conversationRoutes from "./routes/conversation.routes.js";
 import supervisorRoutes from "./routes/supervisor.routes.js";
+import notificationRoutes from './routes/notification.routes.js';
 
 const app=express();
 
@@ -57,5 +58,9 @@ app.use("/api",conversationRoutes);
 // Supervisor routes
 
 app.use("/api",supervisorRoutes);
+
+// Notifications routes
+
+app.use("/api",notificationRoutes);
 
 export default app;

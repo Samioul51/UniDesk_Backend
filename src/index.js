@@ -3,6 +3,7 @@ import connectDB from './db/dbConnect.js';
 import app from './app.js';
 import http from "http";
 import { Server } from 'socket.io';
+import "./cron/reminderJobs.js";
 
 dotenv.config();
 

@@ -61,7 +61,11 @@ const appointmentSchema=new Schema({
     },
     studentCancelReason:String,
     facultyCancelReason:String,
-    rejectionReason:String
+    rejectionReason:String,
+    reminderSent:{
+        type:Boolean,
+        default:false
+    },
 },{
     timestamps:true
 });
