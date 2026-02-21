@@ -3,6 +3,8 @@ import { Appointment } from "../../models/AppointmentModel/appointment.model.js"
 import { Schedule } from "../../models/ScheduleModel/schedule.model.js";
 import { Supervisor } from "../../models/SupervisorModel/supervisor.model.js";
 import { createMeeting } from "../../utils/MeetLinkGeneration/meetLinkGeneration.js";
+import { notifyUsers } from "../../utils/NotificationEngine/notificationService.js";
+import { notificationTypes } from "../../constants/notificationTypes.js";
 
 // Appointment booking
 
@@ -132,6 +134,17 @@ export const bookAppointment = async (req, res) => {
             meetingType
         });
 
+        await notifyUsers({
+            receivers: [facultyID],
+            sender: studentID,
+            type: notificationTypes.appointmentRequest,
+            title: "New Appointment Request",
+            message: `${student.name} requested a meeting.`,
+            entityID: appointment._id,
+            entityModel: "Appointment",
+            redirectURL: `/appointments/${appointment._id}`
+        });
+
         return res.status(201).json({
             success: true,
             message: "Appointment booked successfully",
@@ -254,6 +267,18 @@ export const updateAppointmentStatus = async (req, res) => {
             appointment.studentCancelReason = reason;
 
             await appointment.save();
+
+            await notifyUsers({
+                receivers: [appointment.faculty],
+                sender: userID,
+                type: notificationTypes.appointmentStatusChange,
+                title: "Cancellation Requested",
+                message: "Student requested to cancel the appointment.",
+                entityID: appointment._id,
+                entityModel: "Appointment",
+                redirectURL: `/appointments/${appointment._id}`
+            });
+
             return res.status(200).json({
                 success: true,
                 message: "Cancellation request sent to faculty",
@@ -333,6 +358,17 @@ export const updateAppointmentStatus = async (req, res) => {
             appointment.status = status;
 
             await appointment.save();
+
+            await notifyUsers({
+                receivers: [appointment.student],
+                sender: userID,
+                type: notificationTypes.appointmentStatusChange,
+                title: "Appointment Status Updated",
+                message: `Your appointment is now ${appointment.status}.`,
+                entityID: appointment._id,
+                entityModel: "Appointment",
+                redirectURL: `/appointments/${appointment._id}`
+            });
 
             return res.status(200).json({
                 success: true,

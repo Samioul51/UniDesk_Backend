@@ -1,7 +1,9 @@
+import { notificationTypes } from "../../constants/notificationTypes.js";
 import { io } from "../../index.js";
 import { Conversation } from "../../models/ConversationModel/conversation.model.js";
 import { Message } from "../../models/MessageModel/message.model.js";
 import { User } from "../../models/UserModel/user.model.js";
+import { notifyUsers } from "../../utils/NotificationEngine/notificationService.js";
 
 // Creating conversation
 
@@ -231,6 +233,17 @@ export const sendMessage = async (req, res) => {
 
         io.to(senderID.toString()).emit("newMessage", populatedMessage);
 
+        await notifyUsers({
+            receivers: [receiverID],
+            sender: senderID,
+            type: notificationTypes.newMessage,
+            title: "New Message",
+            message: `${sender.name} sent you a message`,
+            entityID: conversation._id,
+            entityModel: "Conversation",
+            redirectURL: `/chat/${conversation._id}`
+        });
+
         return res.status(201).json({
             success: true,
             message: "Message sent",
@@ -253,7 +266,7 @@ export const messageSeenStatus = async (req, res) => {
 
         if (!userID)
             return res.status(400).json({
-                success:false,
+                success: false,
                 message: "User ID required"
             });
 
@@ -277,12 +290,12 @@ export const messageSeenStatus = async (req, res) => {
 
         await Message.updateMany(
             {
-                conversation:id,
-                sender:{$ne:userID},
-                isRead:false
+                conversation: id,
+                sender: { $ne: userID },
+                isRead: false
             },
             {
-                $set:{isRead:true}
+                $set: { isRead: true }
             }
         );
 
@@ -291,12 +304,12 @@ export const messageSeenStatus = async (req, res) => {
         );
 
         io.to(receiverID.toString()).emit("messageSeen", {
-            conversationID:id,
-            seenBy:userID
+            conversationID: id,
+            seenBy: userID
         });
 
         return res.status(200).json({
-            success:true,
+            success: true,
             message: "Messages marked as read"
         });
     } catch (error) {
