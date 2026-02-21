@@ -41,4 +41,4 @@ export const notifyUsers = async ({
         io.to(userID.toString()).emit("new_notification");
         io.to(userID.toString()).emit("unread_count", unreadCount);
     }
-}
+};
