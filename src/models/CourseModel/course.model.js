@@ -35,12 +35,12 @@ const courseSchema=new Schema({
     },
     teachers:[{
         type:Schema.Types.ObjectId,
-        ref:"users",
+        ref:"User",
         required:true
     }],
     students:[{
         type:Schema.Types.ObjectId,
-        ref:"users"
+        ref:"User"
     }],
     invitationCode:{
         type:String,
@@ -64,4 +64,4 @@ courseSchema.index(
     }
 )
 
-export const Course=mongoose.model("courses",courseSchema);
+export const Course=mongoose.model("Course",courseSchema);

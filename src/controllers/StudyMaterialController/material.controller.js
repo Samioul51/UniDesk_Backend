@@ -1,6 +1,8 @@
+import { notificationTypes } from "../../constants/notificationTypes.js";
 import { Course } from "../../models/CourseModel/course.model.js";
 import { Material } from "../../models/StudyMaterialModel/material.model.js";
 import { User } from "../../models/UserModel/user.model.js";
+import { notifyUsers } from "../../utils/NotificationEngine/notificationService.js";
 
 // Upload material
 
@@ -41,13 +43,26 @@ export const uploadMaterial = async (req, res) => {
                 message: "You are not an instructor of this course"
             });
 
-        await Material.create({
+        const material=await Material.create({
             course: id,
             title,
             description,
             url,
             uploader: uploader
         });
+
+        if (course.students && course.students.length > 0) {
+            await notifyUsers({
+                receivers: course.students,
+                sender: uploader,
+                type: notificationTypes.newStudyMaterial,
+                title: "New Study Material",
+                message: `${title} has been uploaded.`,
+                entityID: material._id,
+                entityModel: "Material",
+                redirectURL: `/materials/${material._id}`
+            });
+        }
 
         return res.status(201).json({
             success: true,

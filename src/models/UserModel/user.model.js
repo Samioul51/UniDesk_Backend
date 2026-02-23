@@ -17,7 +17,7 @@ const userSchema = new Schema({
     role: {
         type: String,
         required: true,
-        enum: ["student", "faculty"]
+        enum: ["student", "faculty","admin"]
     },
     department: {
         type: String,
@@ -41,6 +41,13 @@ const userSchema = new Schema({
             return this.role === "faculty";
         }
     },
+    room:{
+        type: String,
+        required: function () {
+            return this.role === "faculty";
+        },
+        trim:true
+    },
     photoURL: {
         type: String,
         required: true,
@@ -51,12 +58,11 @@ const userSchema = new Schema({
     },
     status: {
         type: String,
-        required: true,
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now,
+        enum:["pending","verified","suspended"],
+        default:"pending"
     }
+},{
+    timestamps:true
 });
 
-export const User = mongoose.model("users", userSchema);
+export const User = mongoose.model("User", userSchema);

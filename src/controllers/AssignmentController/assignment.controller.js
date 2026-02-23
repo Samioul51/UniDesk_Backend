@@ -1,6 +1,8 @@
+import { notificationTypes } from "../../constants/notificationTypes.js";
 import { Assignment } from "../../models/AssignmentModel/assignment.model.js";
 import { Course } from "../../models/CourseModel/course.model.js";
 import { User } from "../../models/UserModel/user.model.js";
+import { notifyUsers } from "../../utils/NotificationEngine/notificationService.js";
 
 // Course wise assignments
 
@@ -80,7 +82,18 @@ export const uploadAssignment = async (req, res) => {
         if (Array.isArray(attachments) && attachments.length > 0)
             assignment.attachments = attachments;
 
-        await Assignment.create(assignment);
+        const createdAssignment = await Assignment.create(assignment);
+
+        await notifyUsers({
+            receivers: course.students,
+            sender: createdBy,
+            type: notificationTypes.newAssignment,
+            title: "New Assignment Posted",
+            message: `${createdAssignment.title} has been posted.`,
+            entityID: createdAssignment._id,
+            entityModel: "Assignment",
+            redirectURL: `/assignments/${createdAssignment._id}`
+        });
 
         return res.status(201).json({
             success: true,
@@ -160,7 +173,7 @@ export const deleteAssignment = async (req, res) => {
 export const updateAssignment = async (req, res) => {
     try {
         const id = req.params.id;
-        const { title, description, addAttachments, removeAttachments } = req.body;
+        const { userID, title, description, addAttachments, removeAttachments } = req.body;
 
         const assignment = await Assignment.findById(id);
 
@@ -168,6 +181,24 @@ export const updateAssignment = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: "Assignment not found"
+            });
+
+        const course = await Course.findById(assignment.course);
+
+        if (!course)
+            return res.status(404).json({
+                success: false,
+                message: "Course not found"
+            });
+
+        const isTeacher = course.teachers.some(
+            t => t.toString() === userID.toString()
+        );
+
+        if (!isTeacher)
+            return res.status(403).json({
+                success: false,
+                message: "Only instructors can update assignments"
             });
 
         const hasTitle = typeof title === "string" && title.trim() !== "" && title !== assignment.title;
@@ -206,6 +237,21 @@ export const updateAssignment = async (req, res) => {
                 { _id: id },
                 { $pull: { attachments: { url: { $in: removeAttachments } } } }
             );
+
+        const updatedAssignment = await Assignment.findById(id);
+
+        if (course && course.students.length > 0) {
+            await notifyUsers({
+                receivers: course.students,
+                sender: req.body.userID,
+                type: notificationTypes.assignmentUpdate,
+                title: "Assignment Updated",
+                message: `Assignment "${updatedAssignment.title}" has been updated.`,
+                entityID: updatedAssignment._id,
+                entityModel: "Assignment",
+                redirectURL: `/assignments/${updatedAssignment._id}`
+            });
+        }
 
         return res.status(200).json({
             success: true,
@@ -401,6 +447,17 @@ export const gradeSubmission = async (req, res) => {
             submission.feedback = feedback;
 
         await assignment.save();
+
+        await notifyUsers({
+            receivers: [submission.student],
+            sender: userID,
+            type: notificationTypes.gradePublished,
+            title: "Marks Published",
+            message: `Your submission for "${assignment.title}" has been graded.`,
+            entityID: assignment._id,
+            entityModel: "Assignment",
+            redirectURL: `/assignments/${assignment._id}`
+        });
 
         return res.status(200).json({
             success: true,

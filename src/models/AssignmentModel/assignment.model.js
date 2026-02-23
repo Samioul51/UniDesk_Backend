@@ -3,7 +3,7 @@ import mongoose, { Schema } from "mongoose";
 const assignmentSchema=new Schema({
     course:{
         type:Schema.Types.ObjectId,
-        ref:"courses",
+        ref:"Course",
         required:true
     },
     title:{
@@ -29,13 +29,13 @@ const assignmentSchema=new Schema({
     }],
     createdBy:{
         type:Schema.Types.ObjectId,
-        ref:"users",
+        ref:"User",
         required:true
     },
     submissions:[{
         student:{
             type:Schema.Types.ObjectId,
-            ref:"users",
+            ref:"User",
             required:true
         },
         submissionURL:{
@@ -54,10 +54,14 @@ const assignmentSchema=new Schema({
             type:String
         }
     }],
+    reminderSent:{
+        type:Boolean,
+        default:false
+    },
     createdAt:{
         type:Date,
         default:Date.now
     }
 });
 
-export const Assignment=mongoose.model("assignments",assignmentSchema);
+export const Assignment=mongoose.model("Assignment",assignmentSchema);

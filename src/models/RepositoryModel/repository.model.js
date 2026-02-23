@@ -35,7 +35,7 @@ const repositorySchema = new Schema({
     },
     uploader: {
         type: Schema.Types.ObjectId,
-        ref: "users",
+        ref: "User",
         required: true
     },
     description: {
@@ -60,7 +60,7 @@ const repositorySchema = new Schema({
     },
     approvedBy: {
         type: Schema.Types.ObjectId,
-        ref: "users"
+        ref: "User"
     },
     approvedAt:{
         type:Date
