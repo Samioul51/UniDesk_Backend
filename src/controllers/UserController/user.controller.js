@@ -1,4 +1,5 @@
 import { User } from "../../models/UserModel/user.model.js";
+import mongoose from "mongoose";
 
 // User creation
 
@@ -13,6 +14,12 @@ export const createUser = async (req, res) => {
             });
 
         const normalizedEmail = email.trim().toLowerCase();
+
+        if (req.user.email !== normalizedEmail)
+            return res.status(403).json({
+                success: false,
+                message: "Email mismatch with authenticated user"
+            });
 
         const existingUser = await User.findOne({ email: normalizedEmail });
 
@@ -253,17 +260,19 @@ export const getUsers = async (req, res) => {
     try {
         const { search, role, status, department } = req.query;
 
-        const page = Number(req.query.page) || 1;
-        const limit = Number(req.query.limit) || 10;
+        const page = Math.max(Number(req.query.page) || 1, 1);
+        const limit = Math.min(Number(req.query.limit) || 10, 50);
 
         const query = {};
 
-        if (search)
+        if (search){
+            const searchRegex = new RegExp(search, "i");
             query.$or = [
-                { name: { $regex: search, $options: "i" } },
-                { email: { $regex: search, $options: "i" } }
+                { name: searchRegex },
+                { email: searchRegex }
             ];
-
+        }
+        
         if (role)
             query.role = role;
         if (status)
@@ -299,6 +308,13 @@ export const getUsers = async (req, res) => {
 export const getSingleUser = async (req, res) => {
     try {
         const email = req.params.email?.trim().toLowerCase();
+
+        if (req.dbUser.role !== "admin" && req.user.email !== email)
+            return res.status(403).json({
+                success: false,
+                message: "You can access only your own profile"
+            });
+
         const user = await User.findOne({ email }).select("-__v");
 
         if (!user)
@@ -325,13 +341,19 @@ export const updateProfile = async (req, res) => {
         const email = req.params.email?.trim().toLowerCase();
         const { name, photoURL, room } = req.body;
 
+        if (req.user.email !== email)
+            return res.status(403).json({
+                success: false,
+                message: "You can update only your own profile"
+            });
+
         if (!name && !photoURL && !room)
             return res.status(400).json({
                 success: false,
                 message: "At least one field is required to update profile"
             });
 
-        if (room && user.role !== "faculty")
+        if (room && req.dbUser.role !== "faculty")
             return res.status(403).json({
                 success: false,
                 message: "Only faculty can update room"
@@ -374,7 +396,15 @@ export const updateProfile = async (req, res) => {
 export const adminUpdateProfile = async (req, res) => {
     try {
         const email = req.params.email?.trim().toLowerCase();
+
+        if (!email)
+            return res.status(400).json({
+                success: false,
+                message: "User email is required"
+            });
+
         const { name, photoURL, status, room } = req.body;
+
         if (!name && !photoURL && !status && !room)
             return res.status(400).json({
                 success: false,
