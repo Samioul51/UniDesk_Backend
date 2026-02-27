@@ -62,12 +62,47 @@ export const createUser = async (req, res) => {
                         message: "Email is not valid student email"
                     });
 
-                const rollFromEmail = normalizedEmail.match(/(\d{7})@/)[1];
+                const roll = normalizedEmail.match(/(\d{7})@/)[1];
 
-                if (rollFromEmail !== studentID)
+                const batchDigits = "2K" + roll.slice(0, 2);
+
+                const deptCode = roll.slice(2, 4);
+
+                const departments = {
+                    "01": "ce",
+                    "03": "eee",
+                    "05": "me",
+                    "07": "cse",
+                    "09": "ece",
+                    "11": "iem",
+                    "13": "ese",
+                    "15": "bme",
+                    "17": "urp",
+                    "19": "le",
+                    "21": "te",
+                    "23": "becm",
+                    "25": "arch",
+                    "27": "mse",
+                    "29": "chem",
+                    "31": "mte"
+                };
+
+                if (roll !== studentID)
                     return res.status(403).json({
                         success: false,
-                        message: "StudentID in email not matched with given StudentID"
+                        message: "Student ID in email not matched with given Student ID"
+                    });
+
+                if (departments[deptCode] !== department)
+                    return res.status(403).json({
+                        success: false,
+                        message: "Department in Student ID not matched with given department"
+                    });
+
+                if (batch !== batchDigits)
+                    return res.status(403).json({
+                        success: false,
+                        message: "Batch in Student ID not matched with given batch"
                     });
 
                 if (!name || !role || !department || !studentID || !batch || !photoURL || !photoId)
@@ -137,6 +172,12 @@ export const createUser = async (req, res) => {
         }
         else if (method === "google") {
             // Google method
+            if (!normalizedEmail.endsWith(".kuet.ac.bd"))
+                return res.status(403).json({
+                    success: false,
+                    message: "Please use a valid KUET email"
+                });
+
             if (normalizedEmail.endsWith("@stud.kuet.ac.bd")) {
                 const userNameRegex = /^[a-zA-Z]+(\d{7})@stud\.kuet\.ac\.bd$/;
 
@@ -182,6 +223,7 @@ export const createUser = async (req, res) => {
                         success: false,
                         message: "Student name required"
                     });
+
                 newUser = {
                     name,
                     email: normalizedEmail,
@@ -189,7 +231,7 @@ export const createUser = async (req, res) => {
                     department: departments[deptCode], studentID: roll,
                     batch: batchDigits,
                     photoURL,
-                    photoId,
+                    photoId:null,
                     status: "verified"
                 };
             }
@@ -227,7 +269,7 @@ export const createUser = async (req, res) => {
                     department: dept,
                     designation: facultyInfo.designation,
                     photoURL: photoURL || facultyInfo.image,
-                    photoId,
+                    photoId:null,
                     room: "",
                     status: "verified"
                 }
@@ -265,14 +307,14 @@ export const getUsers = async (req, res) => {
 
         const query = {};
 
-        if (search){
+        if (search) {
             const searchRegex = new RegExp(search, "i");
             query.$or = [
                 { name: searchRegex },
                 { email: searchRegex }
             ];
         }
-        
+
         if (role)
             query.role = role;
         if (status)

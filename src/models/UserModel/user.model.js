@@ -54,7 +54,6 @@ const userSchema = new Schema({
     },
     photoId: {
         type: String,
-        required: true,
     },
     status: {
         type: String,
