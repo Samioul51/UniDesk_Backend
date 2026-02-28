@@ -97,6 +97,24 @@ export const updateAnnouncement = async (req, res) => {
                 message: "You can only update your own announcements"
             });
 
+        const course = await Course.findById(courseID).select("teachers students");
+
+        if (!course)
+            return res.status(404).json({
+                success: false,
+                message: "Course not found"
+            });
+
+        const isStillFaculty = course.teachers.some(
+            t => t.toString() === req.dbUser._id.toString()
+        );
+
+        if (!isStillFaculty)
+            return res.status(403).json({
+                success: false,
+                message: "You are no longer a teacher of this course"
+            });
+
         const hasTitle = typeof title === "string" && title.trim() !== "" && title !== announcement.title;
         const hasDescription = typeof description === "string" && description.trim() !== "" && description !== announcement.description;
         const hasAdd = Array.isArray(addAttachments) && addAttachments.length > 0;
@@ -138,11 +156,9 @@ export const updateAnnouncement = async (req, res) => {
             .findById(announcementID)
             .select("title");
 
-        const courseData = await Course.findById(courseID).select("students");
-
-        if (courseData && courseData.students.length > 0) {
+        if (course.students.length > 0) {
             await notifyUsers({
-                receivers: courseData.students,
+                receivers: course.students,
                 sender: req.dbUser._id,
                 type: notificationTypes.announcementUpdate,
                 title: "Announcement Updated",
@@ -176,10 +192,10 @@ export const getCourseAnnouncements = async (req, res) => {
                 message: "Course not found"
             });
 
-        const isFaculty=course.teachers.some(t=>t.toString()===req.dbUser._id.toString());
-        const isStudent=course.students.some(s=>s.toString()===req.dbUser._id.toString());
+        const isFaculty = course.teachers.some(t => t.toString() === req.dbUser._id.toString());
+        const isStudent = course.students.some(s => s.toString() === req.dbUser._id.toString());
 
-        if(!isStudent && !isFaculty)
+        if (!isStudent && !isFaculty)
             return res.status(403).json({
                 success: false,
                 message: "You are not involved in this course"
@@ -216,7 +232,7 @@ export const deleteAnnouncement = async (req, res) => {
                 message: "Announcement not found"
             });
 
-        if(announcement.teacher.toString()!==req.dbUser._id.toString())
+        if (announcement.teacher.toString() !== req.dbUser._id.toString())
             return res.status(403).json({
                 success: false,
                 message: "You have not created this announcement so cannot delete"
