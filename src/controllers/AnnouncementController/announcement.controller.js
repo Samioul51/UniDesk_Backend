@@ -8,20 +8,31 @@ import { notifyUsers } from "../../utils/NotificationEngine/notificationService.
 
 export const createAnnouncement = async (req, res) => {
     try {
-        const { course, title, description, attachments, userID } = req.body;
+        const course = req.params.id;
+        const { title, description, attachments } = req.body;
 
-        const user = await User.findById(userID);
+        const courseExists = await Course.findById(course).select("teachers students");
 
-        if (!user)
+        if (!courseExists)
             return res.status(404).json({
                 success: false,
-                message: "User not found"
+                message: "Course not found"
             });
 
-        if (user.role !== "faculty")
+        if (req.dbUser.role !== "faculty")
             return res.status(403).json({
                 success: false,
                 message: "Only faculty can create announcements"
+            });
+
+        const isFaculty = courseExists.teachers.some(
+            t => t.toString() === req.dbUser._id.toString()
+        );
+
+        if (!isFaculty)
+            return res.status(403).json({
+                success: false,
+                message: "You are not a teacher of this course"
             });
 
         if (!title || !description)
@@ -30,19 +41,11 @@ export const createAnnouncement = async (req, res) => {
                 message: "Announcement Title and Description needed"
             });
 
-        const courseExists = await Course.findById(course);
-
-        if (!courseExists)
-            return res.status(404).json({
-                success: false,
-                message: "Course not found"
-            });
-
         const announcement = {
             course,
             title,
             description,
-            teacher: user._id,
+            teacher: req.dbUser._id,
         };
 
         if (attachments)
@@ -50,12 +53,10 @@ export const createAnnouncement = async (req, res) => {
 
         const result = await Announcement.create(announcement);
 
-        const courseData = await Course.findById(course).select("students");
-
-        if (courseData && courseData.students.length > 0) {
+        if (courseExists.students.length > 0) {
             await notifyUsers({
-                receivers: courseData.students,
-                sender: userID,
+                receivers: courseExists.students,
+                sender: req.dbUser._id,
                 type: notificationTypes.newAnnouncement,
                 title: "New Announcement",
                 message: `${title}`,
@@ -79,10 +80,10 @@ export const createAnnouncement = async (req, res) => {
 
 export const updateAnnouncement = async (req, res) => {
     try {
-        const id = req.params.id;
-        const { title, description, userID, addAttachments, removeAttachments } = req.body;
+        const { courseID, announcementID } = req.params;
+        const { title, description, addAttachments, removeAttachments } = req.body;
 
-        const announcement = await Announcement.findById(id);
+        const announcement = await Announcement.findById(announcementID);
 
         if (!announcement)
             return res.status(404).json({
@@ -90,15 +91,7 @@ export const updateAnnouncement = async (req, res) => {
                 message: "Announcement not found"
             });
 
-        const user = await User.findById(userID);
-
-        if (!user)
-            return res.status(404).json({
-                success: false,
-                message: "User not found"
-            });
-
-        if (announcement.teacher.toString() !== userID)
+        if (announcement.teacher.toString() !== req.dbUser._id.toString())
             return res.status(403).json({
                 success: false,
                 message: "You can only update your own announcements"
@@ -125,35 +118,38 @@ export const updateAnnouncement = async (req, res) => {
 
         if (Object.keys(updatedFields).length > 0)
             await Announcement.updateOne(
-                { _id: id },
+                { _id: announcementID },
                 { $set: updatedFields }
             );
 
         if (addAttachments && addAttachments.length > 0)
             await Announcement.updateOne(
-                { _id: id },
+                { _id: announcementID },
                 { $push: { attachments: { $each: addAttachments } } }
             );
 
         if (removeAttachments && removeAttachments.length > 0)
             await Announcement.updateOne(
-                { _id: id },
+                { _id: announcementID },
                 { $pull: { attachments: { url: { $in: removeAttachments } } } }
             );
 
-        // 🔔 notify course students about update
-        const courseData = await Course.findById(announcement.course).select("students");
+        const updatedAnnouncement = await Announcement
+            .findById(announcementID)
+            .select("title");
+
+        const courseData = await Course.findById(courseID).select("students");
 
         if (courseData && courseData.students.length > 0) {
             await notifyUsers({
                 receivers: courseData.students,
-                sender: userID,
-                type: notificationTypes.announcementUpdate, // you can add announcementUpdated later if you want
+                sender: req.dbUser._id,
+                type: notificationTypes.announcementUpdate,
                 title: "Announcement Updated",
-                message: `${announcement.title} has been updated.`,
-                entityID: announcement._id,
+                message: `${updatedAnnouncement.title} has been updated.`,
+                entityID: announcementID,
                 entityModel: "Announcement",
-                redirectURL: `/announcements/${announcement._id}`
+                redirectURL: `/announcements/${announcementID}`
             });
         }
 
@@ -180,22 +176,14 @@ export const getCourseAnnouncements = async (req, res) => {
                 message: "Course not found"
             });
 
-        // const user=await User.findById(userID);
+        const isFaculty=course.teachers.some(t=>t.toString()===req.dbUser._id.toString());
+        const isStudent=course.students.some(s=>s.toString()===req.dbUser._id.toString());
 
-        // if(!user)
-        //     return res.status(404).json({
-        //         success: false,
-        //         message: "User not found"
-        //     });
-
-        // const isTeacher=course.teachers.some(t=>t.toString()===user._id.toString());
-        // const isStudent=course.students.some(s=>s.toString()===user._id.toString());
-
-        // if(!isStudent && !isTeacher)
-        //     return res.status(403).json({
-        //         success: false,
-        //         message: "You are not involved in this course"
-        //     });
+        if(!isStudent && !isFaculty)
+            return res.status(403).json({
+                success: false,
+                message: "You are not involved in this course"
+            });
 
         const announcements = await Announcement.find({
             course: id
@@ -226,6 +214,12 @@ export const deleteAnnouncement = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: "Announcement not found"
+            });
+
+        if(announcement.teacher.toString()!==req.dbUser._id.toString())
+            return res.status(403).json({
+                success: false,
+                message: "You have not created this announcement so cannot delete"
             });
 
         await Announcement.deleteOne(
