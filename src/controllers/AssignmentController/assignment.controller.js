@@ -20,7 +20,7 @@ export const courseAssignments = async (req, res) => {
                 message: "Course not found"
             });
 
-        const isOwner = (course.teachers.some(t => t.toString() === user._id.toString())) || (course.students.some(s => s.toString() === user._id.toString()));
+        const isOwner = (course.faculties.some(t => t.toString() === user._id.toString())) || (course.students.some(s => s.toString() === user._id.toString()));
 
         if (!isOwner)
             return res.status(403).json({
@@ -60,7 +60,7 @@ export const uploadAssignment = async (req, res) => {
 
         const faculty = req.dbUser;
 
-        const isFaculty = course.teachers.some(t => t.toString() === faculty._id.toString())
+        const isFaculty = course.faculties.some(t => t.toString() === faculty._id.toString())
 
         if (!isFaculty)
             return res.status(403).json({
@@ -132,7 +132,7 @@ export const getAssignment = async (req, res) => {
                 message: "Course not found"
             });
 
-        const isOwner = (course.teachers.some(t => t.toString() === user._id.toString())) || (course.students.some(s => s.toString() === user._id.toString()));
+        const isOwner = (course.faculties.some(t => t.toString() === user._id.toString())) || (course.students.some(s => s.toString() === user._id.toString()));
 
         if (!isOwner)
             return res.status(403).json({
@@ -178,7 +178,7 @@ export const deleteAssignment = async (req, res) => {
                 message: "Assignment not found"
             });
 
-        const course = await Course.findById(assignment.course).select("teachers");
+        const course = await Course.findById(assignment.course).select("faculties");
 
         if (!course)
             return res.status(404).json({
@@ -186,14 +186,14 @@ export const deleteAssignment = async (req, res) => {
                 message: "Course not found"
             });
 
-        const isFaculty = course.teachers.some(
+        const isFaculty = course.faculties.some(
             t => t.toString() === faculty._id.toString()
         );
 
         if (!isFaculty)
             return res.status(403).json({
                 success: false,
-                message: "Only course teachers can delete this assignment"
+                message: "Only course faculties can delete this assignment"
             });
 
         await Assignment.deleteOne({ _id: id });
@@ -233,7 +233,7 @@ export const updateAssignment = async (req, res) => {
                 message: "Course not found"
             });
 
-        const isFaculty = course.teachers.some(
+        const isFaculty = course.faculties.some(
             t => t.toString() === faculty._id.toString()
         );
 
@@ -405,7 +405,7 @@ export const getAssignmentSubmissions = async (req, res) => {
                 message: "Course not found"
             });
 
-        const isFaculty = course.teachers.some(
+        const isFaculty = course.faculties.some(
             t => t.toString() === faculty._id.toString()
         );
 
@@ -451,7 +451,7 @@ export const gradeSubmission = async (req, res) => {
                 message: "Course not found"
             });
 
-        const isFaculty = course.teachers.some(
+        const isFaculty = course.faculties.some(
             t => t.toString() === faculty._id.toString()
         );
 

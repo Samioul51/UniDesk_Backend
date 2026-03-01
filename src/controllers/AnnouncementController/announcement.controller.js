@@ -9,9 +9,10 @@ import { notifyUsers } from "../../utils/NotificationEngine/notificationService.
 export const createAnnouncement = async (req, res) => {
     try {
         const course = req.params.id;
+        const user=req.dbUser;
         const { title, description, attachments } = req.body;
 
-        const courseExists = await Course.findById(course).select("teachers students");
+        const courseExists = await Course.findById(course).select("faculties students");
 
         if (!courseExists)
             return res.status(404).json({
@@ -19,20 +20,20 @@ export const createAnnouncement = async (req, res) => {
                 message: "Course not found"
             });
 
-        if (req.dbUser.role !== "faculty")
+        if (user.role !== "faculty")
             return res.status(403).json({
                 success: false,
                 message: "Only faculty can create announcements"
             });
 
-        const isFaculty = courseExists.teachers.some(
-            t => t.toString() === req.dbUser._id.toString()
+        const isFaculty = courseExists.faculties.some(
+            t => t.toString() === user._id.toString()
         );
 
         if (!isFaculty)
             return res.status(403).json({
                 success: false,
-                message: "You are not a teacher of this course"
+                message: "You are not a faculty of this course"
             });
 
         if (!title || !description)
@@ -45,7 +46,7 @@ export const createAnnouncement = async (req, res) => {
             course,
             title,
             description,
-            teacher: req.dbUser._id,
+            faculty: user._id,
         };
 
         if (attachments)
@@ -56,7 +57,7 @@ export const createAnnouncement = async (req, res) => {
         if (courseExists.students.length > 0) {
             await notifyUsers({
                 receivers: courseExists.students,
-                sender: req.dbUser._id,
+                sender: user._id,
                 type: notificationTypes.newAnnouncement,
                 title: "New Announcement",
                 message: `${title}`,
@@ -81,6 +82,7 @@ export const createAnnouncement = async (req, res) => {
 export const updateAnnouncement = async (req, res) => {
     try {
         const { courseID, announcementID } = req.params;
+        const user=req.dbUser;
         const { title, description, addAttachments, removeAttachments } = req.body;
 
         const announcement = await Announcement.findById(announcementID);
@@ -91,13 +93,13 @@ export const updateAnnouncement = async (req, res) => {
                 message: "Announcement not found"
             });
 
-        if (announcement.teacher.toString() !== req.dbUser._id.toString())
+        if (announcement.faculty.toString() !== user._id.toString())
             return res.status(403).json({
                 success: false,
                 message: "You can only update your own announcements"
             });
 
-        const course = await Course.findById(courseID).select("teachers students");
+        const course = await Course.findById(courseID).select("faculties students");
 
         if (!course)
             return res.status(404).json({
@@ -105,14 +107,14 @@ export const updateAnnouncement = async (req, res) => {
                 message: "Course not found"
             });
 
-        const isStillFaculty = course.teachers.some(
-            t => t.toString() === req.dbUser._id.toString()
+        const isStillFaculty = course.faculties.some(
+            t => t.toString() === user._id.toString()
         );
 
         if (!isStillFaculty)
             return res.status(403).json({
                 success: false,
-                message: "You are no longer a teacher of this course"
+                message: "You are no longer a faculty of this course"
             });
 
         const hasTitle = typeof title === "string" && title.trim() !== "" && title !== announcement.title;
@@ -159,7 +161,7 @@ export const updateAnnouncement = async (req, res) => {
         if (course.students.length > 0) {
             await notifyUsers({
                 receivers: course.students,
-                sender: req.dbUser._id,
+                sender: user._id,
                 type: notificationTypes.announcementUpdate,
                 title: "Announcement Updated",
                 message: `${updatedAnnouncement.title} has been updated.`,
@@ -184,6 +186,8 @@ export const getCourseAnnouncements = async (req, res) => {
     try {
         const { id } = req.params;
 
+        const user=req.dbUser;
+
         const course = await Course.findById(id);
 
         if (!course)
@@ -192,8 +196,8 @@ export const getCourseAnnouncements = async (req, res) => {
                 message: "Course not found"
             });
 
-        const isFaculty = course.teachers.some(t => t.toString() === req.dbUser._id.toString());
-        const isStudent = course.students.some(s => s.toString() === req.dbUser._id.toString());
+        const isFaculty = course.faculties.some(t => t.toString() === user._id.toString());
+        const isStudent = course.students.some(s => s.toString() === user._id.toString());
 
         if (!isStudent && !isFaculty)
             return res.status(403).json({
@@ -204,7 +208,7 @@ export const getCourseAnnouncements = async (req, res) => {
         const announcements = await Announcement.find({
             course: id
         })
-            .populate("teacher", "name")
+            .populate("faculty", "name")
             .sort({ createdAt: -1 });
 
         return res.status(200).json({
@@ -224,6 +228,8 @@ export const deleteAnnouncement = async (req, res) => {
     try {
         const id = req.params.id;
 
+        const user=req.dbUser;
+
         const announcement = await Announcement.findById(id);
 
         if (!announcement)
@@ -232,7 +238,7 @@ export const deleteAnnouncement = async (req, res) => {
                 message: "Announcement not found"
             });
 
-        if (announcement.teacher.toString() !== req.dbUser._id.toString())
+        if (announcement.faculty.toString() !== user._id.toString())
             return res.status(403).json({
                 success: false,
                 message: "You have not created this announcement so cannot delete"

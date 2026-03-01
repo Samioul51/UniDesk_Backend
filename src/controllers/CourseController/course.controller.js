@@ -35,7 +35,7 @@ export const createCourse = async (req, res) => {
             year: year.trim(),
             semester: semester.trim(),
             department: department.trim().toLowerCase(),
-            teachers: [req.dbUser._id],
+            faculties: [req.dbUser._id],
             invitationCode
         });
 
@@ -177,7 +177,7 @@ export const facultyJoinCourseByInvitation = async (req, res) => {
                 message: "Only faculties can join courses"
             });
 
-        const alreadyJoined = course.teachers.some(id => id.toString() === userId.toString());
+        const alreadyJoined = course.faculties.some(id => id.toString() === userId.toString());
 
         if (alreadyJoined)
             return res.status(409).json({
@@ -185,7 +185,7 @@ export const facultyJoinCourseByInvitation = async (req, res) => {
                 message: "Already instructing the course"
             });
 
-        if (course.teachers.length === 2)
+        if (course.faculties.length === 2)
             return res.status(403).json({
                 success: false,
                 message: "Already two faculties instructing the course"
@@ -193,7 +193,7 @@ export const facultyJoinCourseByInvitation = async (req, res) => {
 
         await Course.updateOne(
             { _id: course._id },
-            { $addToSet: { teachers: userId } }
+            { $addToSet: { faculties: userId } }
         );
 
         return res.status(200).json({
@@ -226,7 +226,7 @@ export const facultyLeaveCourse = async (req, res) => {
                 message: "Course not found"
             });
 
-        const isFaculty = course.teachers.some(s => s.toString() === req.dbUser._id.toString());
+        const isFaculty = course.faculties.some(s => s.toString() === req.dbUser._id.toString());
 
         if (!isFaculty)
             return res.status(400).json({
@@ -234,15 +234,15 @@ export const facultyLeaveCourse = async (req, res) => {
                 message: "You are not teaching this course"
             });
 
-        if (course.teachers.length === 1)
+        if (course.faculties.length === 1)
             return res.status(403).json({
                 success: false,
-                message: "Cannot leave course as the only teacher"
+                message: "Cannot leave course as the only faculty"
             });
 
         await Course.updateOne(
             { _id: id },
-            { $pull: { teachers: req.dbUser._id } }
+            { $pull: { faculties: req.dbUser._id } }
         );
 
         return res.status(200).json({
@@ -274,12 +274,12 @@ export const removeStudentFromCourse = async (req, res) => {
                 message: "Course not found"
             });
 
-        const isFaculty = course.teachers.some(t => t.toString() === req.dbUser._id.toString());
+        const isFaculty = course.faculties.some(t => t.toString() === req.dbUser._id.toString());
 
         if (!isFaculty)
             return res.status(403).json({
                 success: false,
-                message: "You are not a teacher of this course"
+                message: "You are not a faculty of this course"
             });
 
         const isEnrolled = course.students.some(s => s.toString() === studentId);
@@ -332,7 +332,7 @@ export const singleCourse = async (req, res) => {
             });
 
         if (req.dbUser.role !== "admin") {
-            const isTeacher = course.teachers.some(
+            const isFaculty = course.faculties.some(
                 t => t.toString() === req.dbUser._id.toString()
             );
 
@@ -340,7 +340,7 @@ export const singleCourse = async (req, res) => {
                 s => s.toString() === req.dbUser._id.toString()
             );
 
-            if (!isTeacher && !isStudent)
+            if (!isFaculty && !isStudent)
                 return res.status(403).json({
                     success: false,
                     message: "You do not have access to this course"
@@ -369,14 +369,14 @@ export const getMyCourses = async (req, res) => {
             courses = await Course.find({
                 students: userId
             })
-                .populate("teachers", "name email")
+                .populate("faculties", "name email")
                 .populate("students", "name studentID");
         }
         else if (role === "faculty") {
             courses = await Course.find({
-                teachers: userId
+                faculties: userId
             })
-                .populate("teachers", "name email")
+                .populate("faculties", "name email")
                 .populate("students", "name studentID");
         }
         else
@@ -416,14 +416,14 @@ export const updateCourse = async (req, res) => {
                 message: "Course not found"
             });
 
-        const isTeacher = course.teachers.some(
+        const isFaculty = course.faculties.some(
             t => t.toString() === req.dbUser._id.toString()
         );
 
-        if (!isTeacher)
+        if (!isFaculty)
             return res.status(403).json({
                 success: false,
-                message: "You are not a teacher of this course"
+                message: "You are not a faculty of this course"
             });
 
         if (!description && regenerateInvite !== true)

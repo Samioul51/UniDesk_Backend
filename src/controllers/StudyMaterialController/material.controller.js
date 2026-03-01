@@ -20,7 +20,7 @@ export const uploadMaterial = async (req, res) => {
                 message: "Course not found"
             });
 
-        const isFaculty = course.teachers.some(t => t.toString() === faculty._id.toString());
+        const isFaculty = course.faculties.some(t => t.toString() === faculty._id.toString());
 
         if (!isFaculty)
             return res.status(403).json({
@@ -80,7 +80,7 @@ export const courseMaterials = async (req, res) => {
                 message: "Course not found"
             });
 
-        const isOwner = (course.teachers.some(t => t.toString() === user._id.toString())) || (course.students.some(s => s.toString() === user._id.toString()));
+        const isOwner = (course.faculties.some(t => t.toString() === user._id.toString())) || (course.students.some(s => s.toString() === user._id.toString()));
 
         if (!isOwner)
             return res.status(403).json({
@@ -117,7 +117,7 @@ export const deleteMaterial = async (req, res) => {
 
         const course=await Course.findById(material.course);
 
-        const isFaculty = course.teachers.some(t => t.toString() === faculty._id.toString());
+        const isFaculty = course.faculties.some(t => t.toString() === faculty._id.toString());
 
         if (!isFaculty)
             return res.status(403).json({
