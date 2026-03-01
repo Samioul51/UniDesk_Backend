@@ -1,11 +1,13 @@
 import express from "express";
 import { getItems, getLeaderboard, getSingleItem, itemStatusUpdate, itemUpload } from "../controllers/RepositoryController/repository.controller.js";
+import { verifyFirebaseToken } from "../middlewares/Auth/auth.middleware.js";
+import { verifyRole } from "../middlewares/Role/role.middleware.js";
 
 const router=express.Router();
 
 // Item upload
 
-router.post("/repository",itemUpload);
+router.post("/repository",verifyFirebaseToken,verifyRole(["admin","student","faculty"]),itemUpload);
 
 // Get items
 
@@ -17,10 +19,10 @@ router.get("/repository/leaderboard", getLeaderboard);
 
 // Get single item
 
-router.get("/repository/:id",getSingleItem);
+router.get("/repository/:id",verifyFirebaseToken,verifyRole(["admin","student","faculty"]),getSingleItem);
 
 // Status update
 
-router.patch("/repository/:id",itemStatusUpdate);
+router.patch("/repository/:id",verifyFirebaseToken,verifyRole(["admin"]),itemStatusUpdate);
 
 export default router;

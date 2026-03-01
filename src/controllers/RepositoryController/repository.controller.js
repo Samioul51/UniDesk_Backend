@@ -8,15 +8,9 @@ import { notifyUsers } from "../../utils/NotificationEngine/notificationService.
 
 export const itemUpload = async (req, res) => {
     try {
-        const { title, courseCode, courseName, year, semester, itemType, url, uploader, description } = req.body;
+        const { title, courseCode, courseName, year, semester, itemType, url, description } = req.body;
 
-        const user = await User.findById(uploader);
-
-        if (!user)
-            return res.status(404).json({
-                success: false,
-                message: "User not found"
-            });
+        const uploader = req.dbUser._id;
 
         if (!title || !courseCode || !courseName || !year || !semester || !itemType || !url || !description)
             return res.status(400).json({
@@ -81,6 +75,9 @@ export const getItems = async (req, res) => {
         if (search)
             filter.title = { $regex: search, $options: "i" };
 
+        if (!req.dbUser || req.dbUser.role !== "admin")
+            filter.status = "approved";
+
         const skip = (page - 1) * limit;
 
         const items = await Repository.find(filter).populate("uploader", "name").sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
@@ -115,6 +112,14 @@ export const getSingleItem = async (req, res) => {
                 message: "Item not found"
             });
 
+        if (!req.dbUser || req.dbUser.role !== "admin") {
+            if (item.status !== "approved")
+                return res.status(403).json({
+                    success: false,
+                    message: "Item not available"
+                });
+        }
+
         return res.status(200).json({
             success: true,
             item
@@ -132,6 +137,8 @@ export const itemStatusUpdate = async (req, res) => {
     try {
         const id = req.params.id;
 
+        const admin = req.dbUser;
+
         const item = await Repository.findById(id);
 
         if (!item)
@@ -140,7 +147,7 @@ export const itemStatusUpdate = async (req, res) => {
                 message: "Item not found"
             });
 
-        const { status, rejectedReason, adminID } = req.body;
+        const { status, rejectedReason } = req.body;
 
         if (!status)
             return res.status(400).json({
@@ -148,15 +155,7 @@ export const itemStatusUpdate = async (req, res) => {
                 message: "Status is required"
             });
 
-        const user = await User.findById(adminID);
-
-        if (!user)
-            return res.status(404).json({
-                success: false,
-                message: "User not found"
-            });
-
-        if (user.role !== "admin")
+        if (admin.role !== "admin")
             return res.status(403).json({
                 success: false,
                 message: "Only admins can change status"
@@ -173,7 +172,7 @@ export const itemStatusUpdate = async (req, res) => {
         const updatedData = { status }
 
         if (status === "approved") {
-            updatedData.approvedBy = adminID;
+            updatedData.approvedBy = admin._id;
             updatedData.approvedAt = new Date(),
                 updatedData.rejectedReason = null;
         }
@@ -198,7 +197,7 @@ export const itemStatusUpdate = async (req, res) => {
         if (status === "approved") {
             await notifyUsers({
                 receivers: [updatedItem.uploader],
-                sender: adminID,
+                sender: admin._id,
                 type: notificationTypes.contributionApproved,
                 title: "Contribution Approved",
                 message: "Your uploaded item has been approved.",
@@ -211,7 +210,7 @@ export const itemStatusUpdate = async (req, res) => {
         if (status === "rejected") {
             await notifyUsers({
                 receivers: [updatedItem.uploader],
-                sender: adminID,
+                sender: admin._id,
                 type: notificationTypes.contributionRejected,
                 title: "Contribution Rejected",
                 message: "Your uploaded item was rejected.",
@@ -236,7 +235,7 @@ export const itemStatusUpdate = async (req, res) => {
 
 export const getLeaderboard = async (req, res) => {
     try {
-        const userID = req.user?._id;
+        const userID = req.dbUser?._id;
 
         const topUsers = await Leaderboard.find().populate("user", "name studentID")
             .sort({ totalPoints: -1 }).limit(10);
