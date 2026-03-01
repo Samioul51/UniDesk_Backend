@@ -4,13 +4,7 @@ import { Notification } from "../../models/NotificationModel/notification.model.
 
 export const getNotifications = async (req, res) => {
     try {
-        const { userID } = req.query;
-
-        if (!userID)
-            return res.status(400).json({
-                success: false,
-                message: "User ID required"
-            });
+        const userID=req.dbUser._id;
 
         const notifications = await Notification.find({ receiver: userID }).sort({ createdAt: -1 }).limit(30);
 
@@ -29,13 +23,7 @@ export const getNotifications = async (req, res) => {
 
 export const getUnreadCount = async (req, res) => {
     try {
-        const { userID } = req.query;
-
-        if (!userID)
-            return res.status(400).json({
-                success: false,
-                message: "User ID required"
-            });
+        const userID = req.dbUser._id;
 
         const count = await Notification.countDocuments({
             receiver: userID,
@@ -57,13 +45,7 @@ export const getUnreadCount = async (req, res) => {
 
 export const markOneAsRead = async (req, res) => {
     try {
-        const { userID } = req.body;
-
-        if (!userID)
-            return res.status(400).json({
-                success: false,
-                message: "User ID required"
-            });
+        const userID = req.dbUser._id;
 
         const notification=await Notification.findOneAndUpdate(
             {
@@ -97,13 +79,7 @@ export const markOneAsRead = async (req, res) => {
 
 export const markAllAsRead = async (req, res) => {
     try {
-        const { userID } = req.body;
-
-        if (!userID)
-            return res.status(400).json({
-                success: false,
-                message: "User ID required"
-            });
+        const userID = req.dbUser._id;
 
         await Notification.updateMany(
             {
