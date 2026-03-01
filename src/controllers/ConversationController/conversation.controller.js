@@ -9,47 +9,46 @@ import { notifyUsers } from "../../utils/NotificationEngine/notificationService.
 
 export const createConversation = async (req, res) => {
     try {
-        const { senderID, receiverID } = req.body;
+        const senderID=req.dbUser._id;
+        const { receiverID } = req.body;
 
-        if (!senderID || !receiverID)
+        if (!receiverID)
             return res.status(400).json({
                 success: false,
-                message: "Both users required"
+                message: "Receiver required"
             });
 
-        if (senderID === receiverID)
+        if (senderID.toString() === receiverID.toString())
             return res.status(400).json({
                 success: false,
                 message: "Cannot create conversation with own"
             });
 
-        const sender = await User.findById(senderID);
         const receiver = await User.findById(receiverID);
 
-        if (!sender || !receiver)
+        if (!receiver)
             return res.status(404).json({
                 success: false,
-                message: "User not found"
+                message: "Receiver not found"
             });
 
-        const existingConversation = await Conversation.findOne({
-            participants: { $all: [senderID, receiverID] }
-        }).populate("participants", "name email");
+        const participants=[senderID,receiverID].sort();
 
-        if (existingConversation)
+        let conversation = await Conversation.findOne({participants}).populate("participants", "name email");
+
+        if (conversation)
             return res.status(200).json({
                 success: true,
                 message: "Conversation already exists",
-                conversation: existingConversation
+                conversation
             });
 
-        const conversation = await Conversation.create({
-            participants: [senderID, receiverID]
-        });
+        conversation = await Conversation.create({participants});
 
         return res.status(201).json({
             success: true,
-            message: "Conversation created successfully"
+            message: "Conversation created successfully",
+            conversation
         });
     } catch (error) {
         return res.status(500).json({
@@ -64,12 +63,12 @@ export const getUserConversations = async (req, res) => {
     try {
         const id = req.params.id;
 
-        const user = await User.findById(id);
+        const user = req.dbUser;
 
-        if (!user)
-            return res.status(404).json({
+        if (id.toString()!==user._id.toString())
+            return res.status(403).json({
                 success: false,
-                message: "User not found"
+                message: "You are not authorized to get conversations"
             });
 
         const conversations = await Conversation.find({ participants: { $in: [id] } }).populate("participants", "name email").populate("lastMessage").sort({ updatedAt: -1 });
@@ -91,13 +90,7 @@ export const getUserConversations = async (req, res) => {
 export const getConversation = async (req, res) => {
     try {
         const id = req.params.id;
-        const { userID } = req.query;
-
-        if (!userID)
-            return res.status(400).json({
-                success: false,
-                message: "User ID required"
-            });
+        const user = req.dbUser;
 
         const conversation = await Conversation.findById(id).populate("participants", "name email").populate("lastMessage");
 
@@ -108,7 +101,7 @@ export const getConversation = async (req, res) => {
             });
 
         const isParticipant = conversation.participants.some(
-            p => p._id.toString() === userID
+            p => p._id.toString() === user._id.toString()
         );
 
         if (!isParticipant)
@@ -133,14 +126,11 @@ export const getConversation = async (req, res) => {
 export const getMessages = async (req, res) => {
     try {
         const id = req.params.conversationID;
-        const { userID, page = 1, limit = 10 } = req.query;
-        const skip = (page - 1) * limit;
 
-        if (!userID)
-            return res.status(404).json({
-                success: false,
-                message: "User not found"
-            });
+        const userID=req.dbUser._id;
+
+        const { page = 1, limit = 10 } = req.query;
+        const skip = (page - 1) * limit;
 
         const conversation = await Conversation.findById(id);
 
@@ -151,7 +141,7 @@ export const getMessages = async (req, res) => {
             });
 
         const isParticipant = conversation.participants.some(
-            p => p.toString() === userID
+            p => p.toString() === userID.toString()
         );
 
         if (!isParticipant)
@@ -179,9 +169,11 @@ export const getMessages = async (req, res) => {
 
 export const sendMessage = async (req, res) => {
     try {
-        const { conversationID, senderID, content } = req.body;
+        const { conversationID, content } = req.body;
 
-        if (!conversationID || !senderID || !content)
+        const senderID=req.dbUser._id;
+
+        if (!conversationID || !content)
             return res.status(400).json({
                 success: false,
                 message: "All fields required"
@@ -195,16 +187,8 @@ export const sendMessage = async (req, res) => {
                 message: "Conversation not found"
             });
 
-        const sender = await User.findById(senderID);
-
-        if (!sender)
-            return res.status(404).json({
-                success: false,
-                message: "User not found"
-            });
-
         const isParticipant = conversation.participants.some(
-            p => p.toString() === senderID
+            p => p.toString() === senderID.toString()
         );
 
         if (!isParticipant)
@@ -212,6 +196,8 @@ export const sendMessage = async (req, res) => {
                 success: false,
                 message: "Unauthorized user"
             });
+
+        const sender=await User.findById(senderID).select("name");
 
         const message = await Message.create({
             conversation: conversationID,
@@ -226,7 +212,7 @@ export const sendMessage = async (req, res) => {
         const populatedMessage = await Message.findById(message._id).populate("sender", "name email");
 
         const receiverID = conversation.participants.find(
-            p => p.toString() !== senderID
+            p => p.toString() !== senderID.toString()
         );
 
         io.to(receiverID.toString()).emit("newMessage", populatedMessage);
@@ -262,13 +248,7 @@ export const sendMessage = async (req, res) => {
 export const messageSeenStatus = async (req, res) => {
     try {
         const id = req.params.conversationID;
-        const { userID } = req.body;
-
-        if (!userID)
-            return res.status(400).json({
-                success: false,
-                message: "User ID required"
-            });
+        const userID  = req.dbUser._id;
 
         const conversation = await Conversation.findById(id);
 
@@ -279,7 +259,7 @@ export const messageSeenStatus = async (req, res) => {
             });
 
         const isParticipant = conversation.participants.some(
-            p => p.toString() === userID
+            p => p.toString() === userID.toString()
         );
 
         if (!isParticipant)
@@ -292,15 +272,15 @@ export const messageSeenStatus = async (req, res) => {
             {
                 conversation: id,
                 sender: { $ne: userID },
-                isRead: false
+                read: false
             },
             {
-                $set: { isRead: true }
+                $set: { read: true }
             }
         );
 
         const receiverID = conversation.participants.find(
-            p => p.toString() !== userID
+            p => p.toString() !== userID.toString()
         );
 
         io.to(receiverID.toString()).emit("messageSeen", {
