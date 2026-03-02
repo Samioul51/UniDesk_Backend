@@ -48,6 +48,11 @@ const courseSchema=new Schema({
         unique:true,
         index:true
     },
+    status:{
+        type:String,
+        enum:["active","completed"],
+        default:"active"
+    },
     createdAt:{
         type:Date,
         default:Date.now

@@ -13,7 +13,7 @@ export const createCourse = async (req, res) => {
                 message: "Only faculty can create courses"
             });
 
-        if (!courseCode || !courseName || !session || !year || !semester || !department)
+        if (!courseCode || !description || !courseName || !session || !year || !semester || !department)
             return res.status(400).json({
                 success: false,
                 message: "All required fields must be provided"
@@ -75,6 +75,12 @@ export const studentJoinCourseByInvitation = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: "Invalid invitation link"
+            });
+
+        if (course.status === "completed")
+            return res.status(403).json({
+                success: false,
+                message: "Course is completed. You cannot join."
             });
 
         if (req.dbUser.role !== "student")
@@ -171,6 +177,12 @@ export const facultyJoinCourseByInvitation = async (req, res) => {
                 message: "Invalid invitation link"
             });
 
+        if (course.status === "completed")
+            return res.status(403).json({
+                success: false,
+                message: "Course is completed. You cannot join."
+            });
+
         if (req.dbUser.role !== "faculty")
             return res.status(403).json({
                 success: false,
@@ -234,6 +246,12 @@ export const facultyLeaveCourse = async (req, res) => {
                 message: "You are not teaching this course"
             });
 
+        if (course.status === "completed")
+            return res.status(403).json({
+                success: false,
+                message: "Completed course cannot be left"
+            });
+
         if (course.faculties.length === 1)
             return res.status(403).json({
                 success: false,
@@ -290,6 +308,12 @@ export const removeStudentFromCourse = async (req, res) => {
                 message: "Student is not enrolled in this course"
             });
 
+        if (course.status === "completed")
+            return res.status(403).json({
+                success: false,
+                message: "Cannot modify students of a completed course"
+            });
+
         await Course.updateOne(
             { _id: courseId },
             { $pull: { students: studentId } }
@@ -308,6 +332,11 @@ export const removeStudentFromCourse = async (req, res) => {
 
 export const adminAllCourses = async (req, res) => {
     try {
+        if (req.dbUser.role !== "admin")
+            return res.status(403).json({
+                success: false,
+                message: "Only admin can access all courses"
+            });
         const courses = await Course.find();
         return res.status(200).json({
             success: true,
@@ -400,7 +429,7 @@ export const getMyCourses = async (req, res) => {
 export const updateCourse = async (req, res) => {
     try {
         const id = req.params.id;
-        const { description, regenerateInvite } = req.body;
+        const { description, regenerateInvite, status } = req.body;
 
         if (req.dbUser.role !== "faculty")
             return res.status(403).json({
@@ -426,13 +455,29 @@ export const updateCourse = async (req, res) => {
                 message: "You are not a faculty of this course"
             });
 
-        if (!description && regenerateInvite !== true)
+        if (!description && regenerateInvite !== true && !status)
             return res.status(400).json({
                 success: false,
                 message: "Nothing to update"
             });
 
+        if (course.status === "completed")
+            return res.status(403).json({
+                success: false,
+                message: "Completed course cannot be updated"
+            });
+
         const updatedFields = {};
+
+        if (status) {
+            if (status !== "completed")
+                return res.status(400).json({
+                    success: false,
+                    message: "Faculty can only mark course as completed"
+                });
+
+            updatedFields.status = "completed";
+        }
 
         if (description) {
             if (description.trim() === "")
@@ -442,7 +487,13 @@ export const updateCourse = async (req, res) => {
                 });
             updatedFields.description = description;
         }
-        
+
+        if (status === "completed" && regenerateInvite === true)
+            return res.status(400).json({
+                success: false,
+                message: "Cannot regenerate invite for completed course"
+            });
+
         if (regenerateInvite === true) {
             let newCode;
             let exists = true;
