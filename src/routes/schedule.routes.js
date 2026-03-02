@@ -9,12 +9,12 @@ const router=express.Router();
 
 router.post("/schedule",verifyFirebaseToken,verifyRole(["faculty","admin"]),scheduleCreation);
 
-// GET faculty schedule
-
-router.get("/schedule/:id",verifyFirebaseToken,verifyRole(["faculty","admin","student"]),facultySchedule);
-
 // Update schedule
 
 router.patch("/schedule",verifyFirebaseToken,verifyRole(["faculty","admin"]),updateSchedule);
+
+// GET faculty schedule
+
+router.get("/schedule/:id",verifyFirebaseToken,verifyRole(["faculty","admin","student"]),facultySchedule);
 
 export default router;

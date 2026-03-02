@@ -21,13 +21,13 @@ router.post("/courses/faculty/join",verifyFirebaseToken,verifyRole(["faculty"]),
 
 router.get("/admin/courses",verifyFirebaseToken,verifyRole(["admin"]),adminAllCourses);
 
-// Single course
-
-router.get("/courses/:id",verifyFirebaseToken,verifyRole(["faculty","student","admin"]),singleCourse);
-
 // A single user's courses
 
 router.get("/courses/my-courses",verifyFirebaseToken,verifyRole(["faculty","student"]),getMyCourses);
+
+// Single course
+
+router.get("/courses/:id",verifyFirebaseToken,verifyRole(["faculty","student","admin"]),singleCourse);
 
 // Update course
 

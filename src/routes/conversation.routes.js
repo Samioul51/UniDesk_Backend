@@ -13,13 +13,13 @@ router.post("/conversation",verifyFirebaseToken,verifyRole(["student","faculty"]
 
 router.get("/conversation/user/:id",verifyFirebaseToken,verifyRole(["student","faculty"]),getUserConversations);
 
-// Specific conversation
-
-router.get("/conversation/:id",verifyFirebaseToken,verifyRole(["student","faculty"]),getConversation);
-
 // Get messages
 
 router.get("/conversation/messages/:conversationID",verifyFirebaseToken,verifyRole(["student","faculty"]),getMessages);
+
+// Specific conversation
+
+router.get("/conversation/:id",verifyFirebaseToken,verifyRole(["student","faculty"]),getConversation);
 
 // Send messages
 

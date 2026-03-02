@@ -9,13 +9,13 @@ const router=express.Router();
 
 router.post("/supervisor",verifyFirebaseToken,verifyRole(["faculty","admin"]),assignSupervisee);
 
-// Get faculty supervises
-
-router.get("/supervisor/:supervisorID",verifyFirebaseToken,verifyRole(["faculty","admin"]),getSupervises);
-
 // Get student supervisors
 
 router.get("/supervisor/student/:studentID",verifyFirebaseToken,verifyRole(["student","admin"]),getSupervisors);
+
+// Get faculty supervises
+
+router.get("/supervisor/:supervisorID",verifyFirebaseToken,verifyRole(["faculty","admin"]),getSupervises);
 
 // Update supervisee status
 

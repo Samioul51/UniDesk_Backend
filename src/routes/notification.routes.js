@@ -13,12 +13,12 @@ router.get("/notifications",verifyFirebaseToken,verifyRole(["admin","faculty","s
 
 router.get("/notifications/unread",verifyFirebaseToken,verifyRole(["admin","faculty","student"]),getUnreadCount);
 
-// Mark as read
-
-router.patch("/notifications/:id",verifyFirebaseToken,verifyRole(["admin","faculty","student"]),markOneAsRead);
-
 // Mark all as read
 
 router.patch("/notifications/all",verifyFirebaseToken,verifyRole(["admin","faculty","student"]),markAllAsRead);
+
+// Mark as read
+
+router.patch("/notifications/:id",verifyFirebaseToken,verifyRole(["admin","faculty","student"]),markOneAsRead);
 
 export default router;
