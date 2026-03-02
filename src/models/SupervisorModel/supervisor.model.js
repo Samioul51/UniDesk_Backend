@@ -38,9 +38,4 @@ const supervisorSchema = new Schema({
     timestamps: true
 });
 
-supervisorSchema.index(
-    { supervisor: 1, "supervises.student": 1 },
-    { unique: true }
-)
-
 export const Supervisor = mongoose.model("Supervisor", supervisorSchema);

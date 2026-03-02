@@ -7,30 +7,35 @@ export const createCourse = async (req, res) => {
     try {
         const { courseCode, courseName, description, session, year, semester, department } = req.body;
 
-        // Mock req.user(will remove it after integrating middleware)
-        req.user = {
-            _id: "64f123abc456def789012345",
-            role: "faculty",
-            email: "teacher@test.com"
-        };
-
-        if (req.user.role !== "faculty")
+        if (req.dbUser.role !== "faculty")
             return res.status(403).json({
                 success: false,
                 message: "Only faculty can create courses"
             });
 
-        const invitationCode = generateInvitationCode();
+        if (!courseCode || !courseName || !session || !year || !semester || !department)
+            return res.status(400).json({
+                success: false,
+                message: "All required fields must be provided"
+            });
+
+        let invitationCode;
+        let exists = true;
+
+        while (exists) {
+            invitationCode = generateInvitationCode();
+            exists = await Course.findOne({ invitationCode });
+        }
 
         const course = await Course.create({
-            courseCode,
-            courseName,
+            courseCode: courseCode.trim().toUpperCase(),
+            courseName: courseName.trim(),
             description,
-            session,
-            year,
-            semester,
-            department,
-            teachers: [req.user._id],
+            session: session.trim(),
+            year: year.trim(),
+            semester: semester.trim(),
+            department: department.trim().toLowerCase(),
+            faculties: [req.dbUser._id],
             invitationCode
         });
 
@@ -53,15 +58,8 @@ export const createCourse = async (req, res) => {
 
 export const studentJoinCourseByInvitation = async (req, res) => {
     try {
-
-        // Mock(will remove after middleware creation)
-        req.user = {
-            _id: "66a12f8c9e7b1a23d4c56781",
-            role: "student",
-            email: "student@test.com"
-        };
         const { invitationCode } = req.query;
-        const userId = req.user._id;
+        const userId = req.dbUser._id;
 
         if (!invitationCode)
             return res.status(400).json({
@@ -79,7 +77,7 @@ export const studentJoinCourseByInvitation = async (req, res) => {
                 message: "Invalid invitation link"
             });
 
-        if (req.user.role !== "student")
+        if (req.dbUser.role !== "student")
             return res.status(403).json({
                 success: false,
                 message: "Only students can join courses"
@@ -110,46 +108,40 @@ export const studentJoinCourseByInvitation = async (req, res) => {
 
 // Course leaving by student API
 
-export const studentLeaveCourse=async(req,res)=>{
+export const studentLeaveCourse = async (req, res) => {
     try {
-        const {id}=req.params;
-        // Mock
-        req.user = {
-            _id: "66a12f8c9e7b1a23d4c56781",
-            role: "student",
-            email: "student@test.com"
-        };
+        const { id } = req.params;
 
-        if(req.user.role!=="student")
+        if (req.dbUser.role !== "student")
             return res.status(403).json({
-                success:false,
-                message:"Only students can leave courses"
+                success: false,
+                message: "Only students can leave courses"
             });
 
-        const course=await Course.findById(id);
+        const course = await Course.findById(id);
 
-        if(!course)
+        if (!course)
             return res.status(404).json({
-                success:false,
-                message:"Course not found"
+                success: false,
+                message: "Course not found"
             });
 
-        const isEnrolled=course.students.some(s=>s.toString()===req.user._id.toString());
+        const isEnrolled = course.students.some(s => s.toString() === req.dbUser._id.toString());
 
-        if(!isEnrolled)
+        if (!isEnrolled)
             return res.status(400).json({
-                success:false,
-                message:"You are not enrolled in this course"
+                success: false,
+                message: "You are not enrolled in this course"
             });
 
         await Course.updateOne(
-            {_id:id},
-            {$pull:{students:req.user._id}}
+            { _id: id },
+            { $pull: { students: req.dbUser._id } }
         );
 
         return res.status(200).json({
-            success:true,
-            message:"Left course successfully"
+            success: true,
+            message: "Left course successfully"
         })
     } catch (error) {
         return res.status(500).json({ message: error.message });
@@ -160,15 +152,8 @@ export const studentLeaveCourse=async(req,res)=>{
 
 export const facultyJoinCourseByInvitation = async (req, res) => {
     try {
-
-        // Mock(will remove after middleware creation)
-        req.user = {
-            _id: "66a12f8c9e7b1a23d4c56456",
-            role: "faculty",
-            email: "teacher@cse.kuet.ac.bd"
-        };
         const { code } = req.query;
-        const userId = req.user._id;
+        const userId = req.dbUser._id;
 
         if (!code)
             return res.status(400).json({
@@ -186,13 +171,13 @@ export const facultyJoinCourseByInvitation = async (req, res) => {
                 message: "Invalid invitation link"
             });
 
-        if (req.user.role !== "faculty")
+        if (req.dbUser.role !== "faculty")
             return res.status(403).json({
                 success: false,
                 message: "Only faculties can join courses"
             });
 
-        const alreadyJoined = course.teachers.some(id => id.toString() === userId.toString());
+        const alreadyJoined = course.faculties.some(id => id.toString() === userId.toString());
 
         if (alreadyJoined)
             return res.status(409).json({
@@ -200,7 +185,7 @@ export const facultyJoinCourseByInvitation = async (req, res) => {
                 message: "Already instructing the course"
             });
 
-        if (course.teachers.length === 2)
+        if (course.faculties.length === 2)
             return res.status(403).json({
                 success: false,
                 message: "Already two faculties instructing the course"
@@ -208,7 +193,7 @@ export const facultyJoinCourseByInvitation = async (req, res) => {
 
         await Course.updateOne(
             { _id: course._id },
-            { $addToSet: { teachers: userId } }
+            { $addToSet: { faculties: userId } }
         );
 
         return res.status(200).json({
@@ -223,52 +208,46 @@ export const facultyJoinCourseByInvitation = async (req, res) => {
 
 // Course leaving by faculty API
 
-export const facultyLeaveCourse=async(req,res)=>{
+export const facultyLeaveCourse = async (req, res) => {
     try {
-        const {id}=req.params;
-        // Mock
-        req.user = {
-            _id: "66a12f8c9e7b1a23d4c56123",
-            role: "faculty",
-            email: "teacher@test.com"
-        };
+        const { id } = req.params;
 
-        if(req.user.role!=="faculty")
+        if (req.dbUser.role !== "faculty")
             return res.status(403).json({
-                success:false,
-                message:"Only faculty can leave courses"
+                success: false,
+                message: "Only faculty can leave courses"
             });
 
-        const course=await Course.findById(id);
+        const course = await Course.findById(id);
 
-        if(!course)
+        if (!course)
             return res.status(404).json({
-                success:false,
-                message:"Course not found"
+                success: false,
+                message: "Course not found"
             });
 
-        const isFaculty=course.teachers.some(s=>s.toString()===req.user._id.toString());
+        const isFaculty = course.faculties.some(s => s.toString() === req.dbUser._id.toString());
 
-        if(!isFaculty)
+        if (!isFaculty)
             return res.status(400).json({
-                success:false,
-                message:"You are not teaching this course"
+                success: false,
+                message: "You are not teaching this course"
             });
 
-        if(course.teachers.length===1)
+        if (course.faculties.length === 1)
             return res.status(403).json({
-                success:false,
-                message:"Cannot leave course as the only teacher"
+                success: false,
+                message: "Cannot leave course as the only faculty"
             });
 
         await Course.updateOne(
-            {_id:id},
-            {$pull:{teachers:req.user._id}}
+            { _id: id },
+            { $pull: { faculties: req.dbUser._id } }
         );
 
         return res.status(200).json({
-            success:true,
-            message:"Left course successfully"
+            success: true,
+            message: "Left course successfully"
         })
     } catch (error) {
         return res.status(500).json({ message: error.message });
@@ -277,54 +256,49 @@ export const facultyLeaveCourse=async(req,res)=>{
 
 // Unenroll student as faculty
 
-export const removeStudentFromCourse=async(req,res)=>{
+export const removeStudentFromCourse = async (req, res) => {
     try {
-        const {courseId,studentId}=req.params;
-        req.user = {
-            _id: "64f123abc456def789012345",
-            role: "faculty",
-            email: "teacher@test.com"
-        };
+        const { courseId, studentId } = req.params;
 
-        if(req.user.role!=="faculty")
+        if (req.dbUser.role !== "faculty")
             return res.status(403).json({
-                success:false,
-                message:"Only faculty can remove students"
+                success: false,
+                message: "Only faculty can remove students"
             });
 
-        const course=await Course.findById(courseId);
+        const course = await Course.findById(courseId);
 
-        if(!course)
+        if (!course)
             return res.status(404).json({
-                success:false,
-                message:"Course not found"
+                success: false,
+                message: "Course not found"
             });
-        
-        const isFaculty=course.teachers.some(t=>t.toString()===req.user._id.toString());
 
-        if(!isFaculty)
+        const isFaculty = course.faculties.some(t => t.toString() === req.dbUser._id.toString());
+
+        if (!isFaculty)
             return res.status(403).json({
-                success:false,
-                message:"You are not a teacher of this course"
+                success: false,
+                message: "You are not a faculty of this course"
             });
 
-        const isEnrolled=course.students.some(s=>s.toString()===studentId);
+        const isEnrolled = course.students.some(s => s.toString() === studentId);
 
-        if(!isEnrolled)
+        if (!isEnrolled)
             return res.status(400).json({
-                success:false,
-                message:"Student is not enrolled in this course"
+                success: false,
+                message: "Student is not enrolled in this course"
             });
-        
+
         await Course.updateOne(
-            {_id:courseId},
-            {$pull:{students:studentId}}
+            { _id: courseId },
+            { $pull: { students: studentId } }
         );
 
         return res.status(200).json({
-                success:true,
-                message:"Student removed from course successfully"
-            });
+            success: true,
+            message: "Student removed from course successfully"
+        });
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }
@@ -349,18 +323,34 @@ export const adminAllCourses = async (req, res) => {
 export const singleCourse = async (req, res) => {
     try {
         const id = req.params.id;
-        const course = await Course.findOne({ _id: id });
+        const course = await Course.findById(id);
 
         if (!course)
-            return res.status(400).json({
+            return res.status(404).json({
                 success: false,
                 message: "Course not found"
             });
 
+        if (req.dbUser.role !== "admin") {
+            const isFaculty = course.faculties.some(
+                t => t.toString() === req.dbUser._id.toString()
+            );
+
+            const isStudent = course.students.some(
+                s => s.toString() === req.dbUser._id.toString()
+            );
+
+            if (!isFaculty && !isStudent)
+                return res.status(403).json({
+                    success: false,
+                    message: "You do not have access to this course"
+                });
+        }
+
         return res.status(200).json({
             success: true,
             course
-        });;
+        });
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }
@@ -370,15 +360,8 @@ export const singleCourse = async (req, res) => {
 
 export const getMyCourses = async (req, res) => {
     try {
-        // Mock
-        req.user = {
-            _id: "66a12f8c9e7b1a23d4c56789",
-            role: "student",
-            email: "student@test.com"
-        };
-
-        const userId = req.user._id;
-        const role = req.user.role;
+        const userId = req.dbUser._id;
+        const role = req.dbUser.role;
 
         let courses;
 
@@ -386,14 +369,14 @@ export const getMyCourses = async (req, res) => {
             courses = await Course.find({
                 students: userId
             })
-                .populate("teachers", "name email")
+                .populate("faculties", "name email")
                 .populate("students", "name studentID");
         }
         else if (role === "faculty") {
             courses = await Course.find({
-                teachers: userId
+                faculties: userId
             })
-                .populate("teachers", "name email")
+                .populate("faculties", "name email")
                 .populate("students", "name studentID");
         }
         else
@@ -419,14 +402,7 @@ export const updateCourse = async (req, res) => {
         const id = req.params.id;
         const { description, regenerateInvite } = req.body;
 
-        // Mock
-        req.user = {
-            _id: "64f123abc456def789012345",
-            role: "faculty",
-            email: "teacher@test.com"
-        };
-
-        if (req.user.role !== "faculty")
+        if (req.dbUser.role !== "faculty")
             return res.status(403).json({
                 success: false,
                 message: "Only faculty can update courses"
@@ -440,17 +416,17 @@ export const updateCourse = async (req, res) => {
                 message: "Course not found"
             });
 
-        const isTeacher = course.teachers.some(
-            t => t.toString() === req.user._id.toString()
+        const isFaculty = course.faculties.some(
+            t => t.toString() === req.dbUser._id.toString()
         );
 
-        if (!isTeacher)
+        if (!isFaculty)
             return res.status(403).json({
                 success: false,
-                message: "You are not a teacher of this course"
+                message: "You are not a faculty of this course"
             });
 
-        if (!description || regenerateInvite !== true)
+        if (!description && regenerateInvite !== true)
             return res.status(400).json({
                 success: false,
                 message: "Nothing to update"
@@ -466,8 +442,18 @@ export const updateCourse = async (req, res) => {
                 });
             updatedFields.description = description;
         }
-        if (regenerateInvite===true)
-            updatedFields.invitationCode = generateInvitationCode();
+        
+        if (regenerateInvite === true) {
+            let newCode;
+            let exists = true;
+
+            while (exists) {
+                newCode = generateInvitationCode();
+                exists = await Course.findOne({ invitationCode: newCode });
+            }
+
+            updatedFields.invitationCode = newCode;
+        }
 
         const result = await Course.updateOne(
             { _id: id },

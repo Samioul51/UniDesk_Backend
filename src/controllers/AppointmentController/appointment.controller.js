@@ -10,9 +10,11 @@ import { notificationTypes } from "../../constants/notificationTypes.js";
 
 export const bookAppointment = async (req, res) => {
     try {
-        const { facultyID, studentID, date, startTime, endTime, purpose, mode, meetingType } = req.body;
+        const { facultyID, date, startTime, endTime, purpose, mode, meetingType } = req.body;
 
-        if (!facultyID || !studentID || !date || !startTime || !endTime || !purpose)
+        const student = req.dbUser;
+
+        if (!facultyID || !date || !startTime || !endTime || !purpose)
             return res.status(400).json({
                 success: false,
                 message: "All fields required"
@@ -32,15 +34,13 @@ export const bookAppointment = async (req, res) => {
                 message: "Faculty not found"
             });
 
-        const student = await User.findById(studentID);
-
-        if (!student || student.role !== "student")
-            return res.status(404).json({
+        if (student.role !== "student")
+            return res.status(403).json({
                 success: false,
-                message: "Student not found"
+                message: "Only students can book appointments"
             });
 
-        if (facultyID === studentID)
+        if (facultyID.toString() === student._id.toString())
             return res.status(400).json({
                 success: false,
                 message: "Faculty cannot book appointment with themselves"
@@ -113,7 +113,7 @@ export const bookAppointment = async (req, res) => {
 
         const supervisorDoc = await Supervisor.findOne({
             supervisor: facultyID,
-            "supervises.student": studentID
+            "supervises.student": student._id
         });
 
         const isSupervisee = !!supervisorDoc;
@@ -126,7 +126,7 @@ export const bookAppointment = async (req, res) => {
 
         const appointment = await Appointment.create({
             faculty: facultyID,
-            student: studentID,
+            student: student._id,
             startTime: requestedStart,
             endTime: requestedEnd,
             purpose,
@@ -136,7 +136,7 @@ export const bookAppointment = async (req, res) => {
 
         await notifyUsers({
             receivers: [facultyID],
-            sender: studentID,
+            sender: student._id,
             type: notificationTypes.appointmentRequest,
             title: "New Appointment Request",
             message: `${student.name} requested a meeting.`,
@@ -163,15 +163,15 @@ export const getStudentAppointments = async (req, res) => {
     try {
         const id = req.params.id;
 
-        const student = await User.findById(id);
+        const student = req.dbUser;
 
-        if (!student || student.role !== "student")
-            return res.status(404).json({
+        if (id.toString() !== student._id.toString())
+            return res.status(403).json({
                 success: false,
-                message: "Student not found"
+                message: "You can only see your own appointments"
             });
 
-        const appointments = await Appointment.find({ student: id }).sort({ startTime: -1 }).populate("faculty", "name email room");
+        const appointments = await Appointment.find({ student: student._id }).sort({ startTime: -1 }).populate("faculty", "name email room");
 
         return res.status(200).json({
             success: true,
@@ -192,15 +192,15 @@ export const getFacultyAppointments = async (req, res) => {
     try {
         const id = req.params.id;
 
-        const faculty = await User.findById(id);
+        const faculty = req.dbUser;
 
-        if (!faculty || faculty.role !== "faculty")
-            return res.status(404).json({
+        if (id.toString() !== faculty._id.toString())
+            return res.status(403).json({
                 success: false,
-                message: "Faculty not found"
+                message: "You can see your own appointments"
             });
 
-        const appointments = await Appointment.find({ faculty: id }).sort({ startTime: -1 }).populate("student", "name email");
+        const appointments = await Appointment.find({ faculty: faculty._id }).sort({ startTime: -1 }).populate("student", "name email");
 
         return res.status(200).json({
             success: true,
@@ -229,18 +229,12 @@ export const updateAppointmentStatus = async (req, res) => {
                 message: "Appointment not found"
             });
 
-        const { status, userID, reason } = req.body;
+        const { status, reason } = req.body;
 
-        const user = await User.findById(userID);
-
-        if (!user)
-            return res.status(404).json({
-                success: false,
-                message: "User not found"
-            });
+        const user = req.dbUser;//
 
         if (user.role === "student") {
-            if (appointment.student.toString() !== userID)
+            if (appointment.student.toString() !== user._id.toString())
                 return res.status(403).json({
                     success: false,
                     message: "This appointment belongs to another Student"
@@ -270,7 +264,7 @@ export const updateAppointmentStatus = async (req, res) => {
 
             await notifyUsers({
                 receivers: [appointment.faculty],
-                sender: userID,
+                sender: user._id,
                 type: notificationTypes.appointmentStatusChange,
                 title: "Cancellation Requested",
                 message: "Student requested to cancel the appointment.",
@@ -287,7 +281,7 @@ export const updateAppointmentStatus = async (req, res) => {
         }
 
         if (user.role === "faculty") {
-            if (appointment.faculty.toString() !== userID)
+            if (appointment.faculty.toString() !== user._id.toString())
                 return res.status(403).json({
                     success: false,
                     message: "This appointment belongs to another Faculty"
@@ -311,6 +305,14 @@ export const updateAppointmentStatus = async (req, res) => {
                     message: "Valid status required"
                 });
 
+            const allowedFacultyStatuses = ["approved", "rejected", "completed", "cancelled"];
+
+            if (!allowedFacultyStatuses.includes(status))
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid status value"
+                });
+
             if (appointment.status === "pending") {
                 if (!["approved", "rejected"].includes(status))
                     return res.status(400).json({
@@ -321,6 +323,8 @@ export const updateAppointmentStatus = async (req, res) => {
                 if (status === "approved") {
                     appointment.cancelRequestedByStudent = false;
                     appointment.studentCancelReason = null;
+                    appointment.rejectionReason = null;
+                    appointment.facultyCancelReason = null;
 
                     if (appointment.mode === "online") {
                         const meetLink = createMeeting();
@@ -361,7 +365,7 @@ export const updateAppointmentStatus = async (req, res) => {
 
             await notifyUsers({
                 receivers: [appointment.student],
-                sender: userID,
+                sender: user._id,
                 type: notificationTypes.appointmentStatusChange,
                 title: "Appointment Status Updated",
                 message: `Your appointment is now ${appointment.status}.`,
@@ -393,22 +397,8 @@ export const getAppointment = async (req, res) => {
     try {
         const id = req.params.id;
 
-        const { userID } = req.query;
-
-        if (!userID)
-            return res.status(404).json({
-                success: false,
-                message: "User ID required"
-            });
-
-        const user = await User.findById(userID);
-
-        if (!user)
-            return res.status(404).json({
-                success: false,
-                message: "User not found"
-            });
-
+        const user = req.dbUser;
+        
         const appointment = await Appointment.findById(id).populate("faculty", "name email room").populate("student", "name email");
 
         if (!appointment)
@@ -417,7 +407,7 @@ export const getAppointment = async (req, res) => {
                 message: "Appointment not found"
             });
 
-        const isOwner = (appointment.student._id.toString() === userID) || (appointment.faculty._id.toString() === userID);
+        const isOwner = (appointment.student._id.toString() === user._id.toString()) || (appointment.faculty._id.toString() === user._id.toString());
 
         if (!isOwner)
             return res.status(403).json({

@@ -1,22 +1,24 @@
 import express from "express";
 import { getNotifications, getUnreadCount, markAllAsRead, markOneAsRead } from "../controllers/NotificationController/notification.controller.js";
+import { verifyFirebaseToken } from "../middlewares/Auth/auth.middleware.js";
+import { verifyRole } from "../middlewares/Role/role.middleware.js";
 
 const router=express.Router();
 
 // User wise notifications
 
-router.get("/notifications",getNotifications);
+router.get("/notifications",verifyFirebaseToken,verifyRole(["admin","faculty","student"]),getNotifications);
 
 // Unread count
 
-router.get("/notifications/unread",getUnreadCount);
+router.get("/notifications/unread",verifyFirebaseToken,verifyRole(["admin","faculty","student"]),getUnreadCount);
 
 // Mark as read
 
-router.patch("/notifications/:id",markOneAsRead);
+router.patch("/notifications/:id",verifyFirebaseToken,verifyRole(["admin","faculty","student"]),markOneAsRead);
 
 // Mark all as read
 
-router.patch("/notifications/all",markAllAsRead);
+router.patch("/notifications/all",verifyFirebaseToken,verifyRole(["admin","faculty","student"]),markAllAsRead);
 
 export default router;

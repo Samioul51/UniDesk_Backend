@@ -1,4 +1,5 @@
 import { User } from "../../models/UserModel/user.model.js";
+import mongoose from "mongoose";
 
 // User creation
 
@@ -13,6 +14,12 @@ export const createUser = async (req, res) => {
             });
 
         const normalizedEmail = email.trim().toLowerCase();
+
+        if (req.user.email !== normalizedEmail)
+            return res.status(403).json({
+                success: false,
+                message: "Email mismatch with authenticated user"
+            });
 
         const existingUser = await User.findOne({ email: normalizedEmail });
 
@@ -55,12 +62,47 @@ export const createUser = async (req, res) => {
                         message: "Email is not valid student email"
                     });
 
-                const rollFromEmail = normalizedEmail.match(/(\d{7})@/)[1];
+                const roll = normalizedEmail.match(/(\d{7})@/)[1];
 
-                if (rollFromEmail !== studentID)
+                const batchDigits = "2K" + roll.slice(0, 2);
+
+                const deptCode = roll.slice(2, 4);
+
+                const departments = {
+                    "01": "ce",
+                    "03": "eee",
+                    "05": "me",
+                    "07": "cse",
+                    "09": "ece",
+                    "11": "iem",
+                    "13": "ese",
+                    "15": "bme",
+                    "17": "urp",
+                    "19": "le",
+                    "21": "te",
+                    "23": "becm",
+                    "25": "arch",
+                    "27": "mse",
+                    "29": "chem",
+                    "31": "mte"
+                };
+
+                if (roll !== studentID)
                     return res.status(403).json({
                         success: false,
-                        message: "StudentID in email not matched with given StudentID"
+                        message: "Student ID in email not matched with given Student ID"
+                    });
+
+                if (departments[deptCode] !== department)
+                    return res.status(403).json({
+                        success: false,
+                        message: "Department in Student ID not matched with given department"
+                    });
+
+                if (batch !== batchDigits)
+                    return res.status(403).json({
+                        success: false,
+                        message: "Batch in Student ID not matched with given batch"
                     });
 
                 if (!name || !role || !department || !studentID || !batch || !photoURL || !photoId)
@@ -130,6 +172,12 @@ export const createUser = async (req, res) => {
         }
         else if (method === "google") {
             // Google method
+            if (!normalizedEmail.endsWith(".kuet.ac.bd"))
+                return res.status(403).json({
+                    success: false,
+                    message: "Please use a valid KUET email"
+                });
+
             if (normalizedEmail.endsWith("@stud.kuet.ac.bd")) {
                 const userNameRegex = /^[a-zA-Z]+(\d{7})@stud\.kuet\.ac\.bd$/;
 
@@ -175,6 +223,7 @@ export const createUser = async (req, res) => {
                         success: false,
                         message: "Student name required"
                     });
+
                 newUser = {
                     name,
                     email: normalizedEmail,
@@ -182,7 +231,7 @@ export const createUser = async (req, res) => {
                     department: departments[deptCode], studentID: roll,
                     batch: batchDigits,
                     photoURL,
-                    photoId,
+                    photoId:null,
                     status: "verified"
                 };
             }
@@ -220,7 +269,7 @@ export const createUser = async (req, res) => {
                     department: dept,
                     designation: facultyInfo.designation,
                     photoURL: photoURL || facultyInfo.image,
-                    photoId,
+                    photoId:null,
                     room: "",
                     status: "verified"
                 }
@@ -253,16 +302,18 @@ export const getUsers = async (req, res) => {
     try {
         const { search, role, status, department } = req.query;
 
-        const page = Number(req.query.page) || 1;
-        const limit = Number(req.query.limit) || 10;
+        const page = Math.max(Number(req.query.page) || 1, 1);
+        const limit = Math.min(Number(req.query.limit) || 10, 50);
 
         const query = {};
 
-        if (search)
+        if (search) {
+            const searchRegex = new RegExp(search, "i");
             query.$or = [
-                { name: { $regex: search, $options: "i" } },
-                { email: { $regex: search, $options: "i" } }
+                { name: searchRegex },
+                { email: searchRegex }
             ];
+        }
 
         if (role)
             query.role = role;
@@ -299,6 +350,13 @@ export const getUsers = async (req, res) => {
 export const getSingleUser = async (req, res) => {
     try {
         const email = req.params.email?.trim().toLowerCase();
+
+        if (req.dbUser.role !== "admin" && req.user.email !== email)
+            return res.status(403).json({
+                success: false,
+                message: "You can access only your own profile"
+            });
+
         const user = await User.findOne({ email }).select("-__v");
 
         if (!user)
@@ -325,13 +383,19 @@ export const updateProfile = async (req, res) => {
         const email = req.params.email?.trim().toLowerCase();
         const { name, photoURL, room } = req.body;
 
+        if (req.user.email !== email)
+            return res.status(403).json({
+                success: false,
+                message: "You can update only your own profile"
+            });
+
         if (!name && !photoURL && !room)
             return res.status(400).json({
                 success: false,
                 message: "At least one field is required to update profile"
             });
 
-        if (room && user.role !== "faculty")
+        if (room && req.dbUser.role !== "faculty")
             return res.status(403).json({
                 success: false,
                 message: "Only faculty can update room"
@@ -374,7 +438,15 @@ export const updateProfile = async (req, res) => {
 export const adminUpdateProfile = async (req, res) => {
     try {
         const email = req.params.email?.trim().toLowerCase();
+
+        if (!email)
+            return res.status(400).json({
+                success: false,
+                message: "User email is required"
+            });
+
         const { name, photoURL, status, room } = req.body;
+
         if (!name && !photoURL && !status && !room)
             return res.status(400).json({
                 success: false,

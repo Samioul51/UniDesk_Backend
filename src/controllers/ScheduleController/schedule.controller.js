@@ -103,6 +103,8 @@ export const facultySchedule = async (req, res) => {
 
 export const updateSchedule = async (req, res) => {
     try {
+        const user=req.dbUser;
+        
         const { facultyID, weeklySchedule } = req.body;
 
         if (!facultyID || !weeklySchedule)
@@ -117,18 +119,10 @@ export const updateSchedule = async (req, res) => {
                 message: "Weekly schedule cannot be empty"
             });
 
-        const user = await User.findById(facultyID);
-
-        if (!user)
-            return res.status(404).json({
-                success: false,
-                message: "User not found"
-            });
-
-        if (user.role !== "faculty")
+        if (user.role !== "admin" && user._id.toString()!==facultyID)
             return res.status(403).json({
                 success: false,
-                message: "User is not a faculty"
+                message: "You are not authorized to update schedule"
             });
 
         const days = weeklySchedule.map(d => d.day);

@@ -16,7 +16,7 @@ const announcementSchema = new Schema({
         type: String,
         required: true
     },
-    teacher: {
+    faculty: {
         type: Schema.Types.ObjectId,
         ref: "User",
         required: true

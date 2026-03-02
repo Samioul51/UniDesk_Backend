@@ -33,7 +33,7 @@ const courseSchema=new Schema({
         type:String,
         required:true
     },
-    teachers:[{
+    faculties:[{
         type:Schema.Types.ObjectId,
         ref:"User",
         required:true
