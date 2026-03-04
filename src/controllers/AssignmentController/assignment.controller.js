@@ -524,7 +524,71 @@ export const gradeSubmission = async (req, res) => {
         });
 
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            message: error.message
+        });
+    }
+};
+
+// Unsubmit assignment by student
+
+export const unsubmitAssignment = async (req, res) => {
+    try {
+        const id = req.params.id;
+
+        const student = req.dbUser;
+
+        const assignment = await Assignment.findById(id).select("dueDate submissions");
+
+        if (!assignment)
+            return res.status(404).json({
+                success: false,
+                message: "Assignment not found"
+            });
+
+        if (new Date() > assignment.dueDate)
+            return res.status(403).json({
+                success: false,
+                message: "Submission cannot be deleted after due date"
+            });
+
+        const submission = assignment.submissions.find(
+            s => s.student.toString() === student._id.toString()
+        );
+
+        if (!submission)
+            return res.status(404).json({
+                success: false,
+                message: "Submission not found"
+            });
+
+        if (submission.marks !== null)
+            return res.status(403).json({
+                success: false,
+                message: "Graded submissions cannot be unsubmitted"
+            });
+
+        if (submission.cloudinaryId) {
+            try {
+                await deleteFromCloudinary(submission.cloudinaryId);
+            } catch (error) {
+                console.error("Cloudinary deletion failed:", error.message);
+            }
+        }
+
+        await Assignment.updateOne(
+            { _id: id },
+            { $pull: { submissions: { student: student._id } } }
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Submission unsubmitted successfully"
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        });
     }
 };
 

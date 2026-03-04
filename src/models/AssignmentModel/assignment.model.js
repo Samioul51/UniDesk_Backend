@@ -45,6 +45,10 @@ const assignmentSchema = new Schema({
             type: String,
             required: true
         },
+        cloudinaryId:{
+            type: String,
+            required: true
+        },
         submittedAt: {
             type: Date,
             default: Date.now
