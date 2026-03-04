@@ -1,8 +1,8 @@
 import { notificationTypes } from "../../constants/notificationTypes.js";
 import { Assignment } from "../../models/AssignmentModel/assignment.model.js";
 import { Course } from "../../models/CourseModel/course.model.js";
-import { User } from "../../models/UserModel/user.model.js";
 import { notifyUsers } from "../../utils/NotificationEngine/notificationService.js";
+import { deleteFromCloudinary } from "../../utils/DeleteFromCloudinary/deleteFromCloudinary.js";
 
 // Course wise assignments
 
@@ -196,7 +196,15 @@ export const deleteAssignment = async (req, res) => {
                 message: "Only course faculties can delete this assignment"
             });
 
-        await Assignment.deleteOne({ _id: id });
+        if (assignment.attachments?.length) {
+            await Promise.all(
+                assignment.attachments.filter(file => file.cloudinaryId).map(file => deleteFromCloudinary(file.cloudinaryId).catch((error) => {
+                    console.error("Cloudinary deletion failed:", error.message)
+                }))
+            )
+        }
+
+        await assignment.deleteOne();
 
         return res.status(200).json({
             success: true,
@@ -243,8 +251,12 @@ export const updateAssignment = async (req, res) => {
                 message: "Only faculty of this course can update assignments"
             });
 
-        const hasTitle = typeof title === "string" && title.trim() !== "" && title !== assignment.title;
-        const hasDescription = typeof description === "string" && description.trim() !== "" && description !== assignment.description;
+        const cleanTitle = typeof title === "string" ? title.trim() : null;
+
+        const cleanDescription = typeof description === "string" ? description.trim() : null;
+
+        const hasTitle = cleanTitle && cleanTitle !== assignment.title;
+        const hasDescription = cleanDescription && cleanDescription !== assignment.description;
         const hasAdd = Array.isArray(addAttachments) && addAttachments.length > 0;
         const hasRemove = Array.isArray(removeAttachments) && removeAttachments.length > 0;
 
@@ -254,35 +266,43 @@ export const updateAssignment = async (req, res) => {
                 message: "Nothing to update"
             });
 
-        const updatedFields = {};
+        const updateQuery = {};
 
-        if (title)
-            updatedFields.title = title.trim();
+        if (hasTitle || hasDescription) {
+            updateQuery.$set = {};
+            if (hasTitle)
+                updateQuery.$set.title = cleanTitle;
+            if (hasDescription)
+                updateQuery.$set.description = cleanDescription;
+        }
 
-        if (description)
-            updatedFields.description = description.trim();
+        if (hasAdd)
+            updateQuery.$push = {
+                attachments: { $each: addAttachments }
+            };
 
-        if (Object.keys(updatedFields).length > 0)
-            await Assignment.updateOne(
-                { _id: id },
-                { $set: updatedFields }
+        if (hasRemove)
+            updateQuery.$pull = {
+                attachments: { url: { $in: removeAttachments } }
+            }
+
+        await Assignment.updateOne({ _id: id }, updateQuery);
+
+        if (hasRemove) {
+            const removedFiles = assignment.attachments.filter(
+                file => removeAttachments.includes(file.url)
             );
 
-        if (addAttachments && addAttachments.length > 0)
-            await Assignment.updateOne(
-                { _id: id },
-                { $push: { attachments: { $each: addAttachments } } }
-            );
+            await Promise.all(
+                removedFiles.filter(file => file.cloudinaryId).map(file => deleteFromCloudinary(file.cloudinaryId).catch((error) => {
+                    console.error("Cloudinary deletion failed:", error.message)
+                }))
+            )
+        }
 
-        if (removeAttachments && removeAttachments.length > 0)
-            await Assignment.updateOne(
-                { _id: id },
-                { $pull: { attachments: { url: { $in: removeAttachments } } } }
-            );
+        const updatedAssignment = await Assignment.findById(id).select("title");
 
-        const updatedAssignment = await Assignment.findById(id);
-
-        if (course && course.students.length > 0) {
+        if (course.students?.length > 0) {
             await notifyUsers({
                 receivers: course.students,
                 sender: faculty._id,
@@ -386,7 +406,7 @@ export const getAssignmentSubmissions = async (req, res) => {
     try {
         const id = req.params.id;
 
-        const faculty=req.dbUser;
+        const faculty = req.dbUser;
 
         const assignment = await Assignment.findById(id)
             .populate("submissions.student", "name email studentID");
@@ -431,9 +451,9 @@ export const getAssignmentSubmissions = async (req, res) => {
 export const gradeSubmission = async (req, res) => {
     try {
         const { id, submissionId } = req.params;
-        const { marks, feedback} = req.body;
+        const { marks, feedback } = req.body;
 
-        const faculty=req.dbUser;
+        const faculty = req.dbUser;
 
         const assignment = await Assignment.findById(id);
 
@@ -504,7 +524,71 @@ export const gradeSubmission = async (req, res) => {
         });
 
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            message: error.message
+        });
+    }
+};
+
+// Unsubmit assignment by student
+
+export const unsubmitAssignment = async (req, res) => {
+    try {
+        const id = req.params.id;
+
+        const student = req.dbUser;
+
+        const assignment = await Assignment.findById(id).select("dueDate submissions");
+
+        if (!assignment)
+            return res.status(404).json({
+                success: false,
+                message: "Assignment not found"
+            });
+
+        if (new Date() > assignment.dueDate)
+            return res.status(403).json({
+                success: false,
+                message: "Submission cannot be deleted after due date"
+            });
+
+        const submission = assignment.submissions.find(
+            s => s.student.toString() === student._id.toString()
+        );
+
+        if (!submission)
+            return res.status(404).json({
+                success: false,
+                message: "Submission not found"
+            });
+
+        if (submission.marks !== null)
+            return res.status(403).json({
+                success: false,
+                message: "Graded submissions cannot be unsubmitted"
+            });
+
+        if (submission.cloudinaryId) {
+            try {
+                await deleteFromCloudinary(submission.cloudinaryId);
+            } catch (error) {
+                console.error("Cloudinary deletion failed:", error.message);
+            }
+        }
+
+        await Assignment.updateOne(
+            { _id: id },
+            { $pull: { submissions: { student: student._id } } }
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Submission unsubmitted successfully"
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        });
     }
 };
 

@@ -1,5 +1,5 @@
 import express from "express";
-import { courseAssignments, deleteAssignment, getAssignment, getAssignmentSubmissions, gradeSubmission, submitAssignment, updateAssignment, uploadAssignment } from "../controllers/AssignmentController/assignment.controller.js";
+import { courseAssignments, deleteAssignment, getAssignment, getAssignmentSubmissions, gradeSubmission, submitAssignment, unsubmitAssignment, updateAssignment, uploadAssignment } from "../controllers/AssignmentController/assignment.controller.js";
 import { verifyFirebaseToken } from "../middlewares/Auth/auth.middleware.js";
 import { verifyRole } from "../middlewares/Role/role.middleware.js";
 
@@ -16,6 +16,10 @@ router.post("/course/:id/assignment",verifyFirebaseToken,verifyRole(["faculty"])
 // Single assignment
 
 router.get("/course/:courseID/assignment/:assignmentID",verifyFirebaseToken,verifyRole(["student","faculty"]),getAssignment);
+
+// Unsubmit assignment
+
+router.delete("/assignment/:id/submission",verifyFirebaseToken,verifyRole(["student"]),unsubmitAssignment);
 
 // Delete assignment
 

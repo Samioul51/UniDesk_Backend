@@ -27,6 +27,9 @@ const announcementSchema = new Schema({
         },
         url:{
             type:String
+        },
+        cloudinaryId:{
+            type:String
         }
     }],
     createdAt: {

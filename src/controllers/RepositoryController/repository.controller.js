@@ -2,6 +2,7 @@ import { notificationTypes } from "../../constants/notificationTypes.js";
 import { Leaderboard } from "../../models/ContributionLeaderboardModel/leaderboard.model.js";
 import { Repository } from "../../models/RepositoryModel/repository.model.js";
 import { User } from "../../models/UserModel/user.model.js";
+import { deleteFromCloudinary } from "../../utils/DeleteFromCloudinary/deleteFromCloudinary.js";
 import { notifyUsers } from "../../utils/NotificationEngine/notificationService.js";
 
 // Item upload
@@ -271,6 +272,40 @@ export const getLeaderboard = async (req, res) => {
             top10: rankedTopUsers,
             currentUser: currentUserData
         });
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        });
+    }
+};
+
+// Item Deletion
+
+export const deleteItem = async (req, res) => {
+    try {
+        const id = req.params.id;
+
+        const item = await Repository.findById(id);
+
+        if (!item)
+            return res.status(404).json({
+                success: false,
+                message: "Item not found"
+            });
+
+        try {
+            await deleteFromCloudinary(item.cloudinaryId);
+        } catch (error) {
+            console.error("Cloudinary deletion failed:", error.message);
+        }
+
+        await item.deleteOne();
+
+        return res.status(200).json({
+            success: true,
+            message: "Item permanently deleted"
+        });
+
     } catch (error) {
         return res.status(500).json({
             message: error.message

@@ -52,11 +52,9 @@ const courseSchema=new Schema({
         type:String,
         enum:["active","completed"],
         default:"active"
-    },
-    createdAt:{
-        type:Date,
-        default:Date.now
     }
+},{
+    timestamps:true
 });
 
 courseSchema.index(

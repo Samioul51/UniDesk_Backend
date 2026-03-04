@@ -1,5 +1,6 @@
 import { User } from "../../models/UserModel/user.model.js";
 import mongoose from "mongoose";
+import { deleteFromCloudinary } from "../../utils/DeleteFromCloudinary/deleteFromCloudinary.js";
 
 // User creation
 
@@ -231,7 +232,7 @@ export const createUser = async (req, res) => {
                     department: departments[deptCode], studentID: roll,
                     batch: batchDigits,
                     photoURL,
-                    photoId:null,
+                    photoId: null,
                     status: "verified"
                 };
             }
@@ -269,7 +270,7 @@ export const createUser = async (req, res) => {
                     department: dept,
                     designation: facultyInfo.designation,
                     photoURL: photoURL || facultyInfo.image,
-                    photoId:null,
+                    photoId: null,
                     room: "",
                     status: "verified"
                 }
@@ -381,7 +382,7 @@ export const getSingleUser = async (req, res) => {
 export const updateProfile = async (req, res) => {
     try {
         const email = req.params.email?.trim().toLowerCase();
-        const { name, photoURL, room } = req.body;
+        const { name, photoURL, photoId, room } = req.body;
 
         if (req.user.email !== email)
             return res.status(403).json({
@@ -389,7 +390,7 @@ export const updateProfile = async (req, res) => {
                 message: "You can update only your own profile"
             });
 
-        if (!name && !photoURL && !room)
+        if (!name && !photoURL && !photoId && !room)
             return res.status(400).json({
                 success: false,
                 message: "At least one field is required to update profile"
@@ -401,35 +402,51 @@ export const updateProfile = async (req, res) => {
                 message: "Only faculty can update room"
             });
 
-        const updatedFields = {};
-        if (name)
-            updatedFields.name = name;
-        if (photoURL)
-            updatedFields.photoURL = photoURL;
-        if (room)
-            updatedFields.room = room;
+        if ((photoURL && !photoId) || (photoId && !photoURL))
+            return res.status(400).json({
+                success: false,
+                message: "Both PhotoURL and PhotoId required"
+            });
 
-        const user = await User.findOneAndUpdate(
-            { email },
-            {
-                $set: updatedFields
-            },
-            { new: true }
-        ).select("-__v");
+        const user = await User.findOne({ email });
 
         if (!user)
             return res.status(404).json({
                 success: false,
-                message: "No user found"
+                message: "User not found"
             });
+
+        if (name)
+            user.name = name;
+
+        if (room)
+            user.room = room;
+
+        if (photoURL && photoId) {
+            if (user.photoId && user.photoId !== photoId) {
+                try {
+                    await deleteFromCloudinary(user.photoId);
+                } catch (error) {
+                    console.error("Cloudinary deletion failed:", error.message);
+                }
+            }
+
+            user.photoURL = photoURL;
+            user.photoId = photoId;
+        }
+
+        await user.save();
+
+        const updatedUser = user.toObject({versionKey:false});
 
         return res.status(200).json({
             success: true,
-            message: "Profile updated successfully",
-            user
+            message: "Profile updated successfully"
         });
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            message: error.message
+        });
     }
 };
 
@@ -445,9 +462,9 @@ export const adminUpdateProfile = async (req, res) => {
                 message: "User email is required"
             });
 
-        const { name, photoURL, status, room } = req.body;
+        const { name, photoURL, photoId, status, room } = req.body;
 
-        if (!name && !photoURL && !status && !room)
+        if (!name && !photoURL && !photoId && !status && !room)
             return res.status(400).json({
                 success: false,
                 message: "At least one field is required to update profile"
@@ -463,37 +480,51 @@ export const adminUpdateProfile = async (req, res) => {
                 message: "Invalid status value"
             });
 
-        const updatedFields = {};
-        if (name)
-            updatedFields.name = name;
-        if (photoURL)
-            updatedFields.photoURL = photoURL;
-        if (cleanStatus)
-            updatedFields.status = cleanStatus;
-        if (room)
-            updatedFields.room = room;
+        if ((photoURL && !photoId) || (photoId && !photoURL))
+            return res.status(400).json({
+                success: false,
+                message: "Both PhotoURL and PhotoId required"
+            });
 
-        const user = await User.findOneAndUpdate(
-            { email },
-            {
-                $set: updatedFields
-            },
-            { new: true }
-        ).select("-__v");
+        const user = await User.findOne({ email });
 
         if (!user)
             return res.status(404).json({
                 success: false,
-                message: "No user found"
+                message: "User not found"
             });
+
+        if (name)
+            user.name = name;
+
+        if (room)
+            user.room = room;
+
+        if (cleanStatus)
+            user.status = cleanStatus;
+
+        if (photoURL && photoId) {
+            if (user.photoId && user.photoId !== photoId) {
+                try {
+                    await deleteFromCloudinary(user.photoId);
+                } catch (error) {
+                    console.error("Cloudinary deletion failed:", error.message);
+                }
+            }
+
+            user.photoURL = photoURL;
+            user.photoId = photoId;
+        }
+
+        await user.save();
+
+        const updatedUser = user.toObject({versionKey:false});
 
         return res.status(200).json({
             success: true,
             message: "Profile updated successfully",
-            user
+            user: updatedUser
         });
-
-
     } catch (error) {
         return res.status(500).json({
             message: error.message
@@ -521,7 +552,15 @@ export const adminDeleteUser = async (req, res) => {
                 message: "Admin users cannot be deleted"
             });
 
-        await User.deleteOne({ email });
+        if (user.photoId) {
+            try {
+                await deleteFromCloudinary(user.photoId);
+            } catch (error) {
+                console.error("Cloudinary deletion failed:", error.message);
+            }
+        }
+
+        await user.deleteOne();
 
         return res.status(200).json({
             success: true,

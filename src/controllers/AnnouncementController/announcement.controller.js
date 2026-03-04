@@ -9,7 +9,7 @@ import { notifyUsers } from "../../utils/NotificationEngine/notificationService.
 export const createAnnouncement = async (req, res) => {
     try {
         const course = req.params.id;
-        const user=req.dbUser;
+        const user = req.dbUser;
         const { title, description, attachments } = req.body;
 
         const courseExists = await Course.findById(course).select("faculties students");
@@ -82,7 +82,7 @@ export const createAnnouncement = async (req, res) => {
 export const updateAnnouncement = async (req, res) => {
     try {
         const { courseID, announcementID } = req.params;
-        const user=req.dbUser;
+        const user = req.dbUser;
         const { title, description, addAttachments, removeAttachments } = req.body;
 
         const announcement = await Announcement.findById(announcementID);
@@ -91,6 +91,12 @@ export const updateAnnouncement = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: "Announcement not found"
+            });
+
+        if (announcement.course.toString() !== courseID)
+            return res.status(400).json({
+                success: false,
+                message: "Announcement does not belong to this course"
             });
 
         if (announcement.faculty.toString() !== user._id.toString())
@@ -117,10 +123,14 @@ export const updateAnnouncement = async (req, res) => {
                 message: "You are no longer a faculty of this course"
             });
 
-        const hasTitle = typeof title === "string" && title.trim() !== "" && title !== announcement.title;
-        const hasDescription = typeof description === "string" && description.trim() !== "" && description !== announcement.description;
+        const cleanTitle = typeof title === "string" ? title.trim() : null;
+        const cleanDescription = typeof description === "string" ? description.trim() : null;
+
+        const hasTitle = cleanTitle && cleanTitle !== announcement.title;
+        const hasDescription = cleanDescription && cleanDescription !== announcement.description;
         const hasAdd = Array.isArray(addAttachments) && addAttachments.length > 0;
         const hasRemove = Array.isArray(removeAttachments) && removeAttachments.length > 0;
+
 
         if (!hasTitle && !hasDescription && !hasAdd && !hasRemove)
             return res.status(400).json({
@@ -128,37 +138,41 @@ export const updateAnnouncement = async (req, res) => {
                 message: "Nothing to update"
             });
 
-        const updatedFields = {};
+        const updateQuery = {};
 
-        if (title)
-            updatedFields.title = title.trim();
+        if (hasTitle || hasDescription) {
+            updateQuery.$set = {};
+            if (hasTitle) updateQuery.$set.title = cleanTitle;
+            if (hasDescription) updateQuery.$set.description = cleanDescription;
+        }
 
-        if (description)
-            updatedFields.description = description.trim();
+        if (hasAdd)
+            updateQuery.$push = {
+                attachments: { $each: addAttachments }
+            };
 
-        if (Object.keys(updatedFields).length > 0)
-            await Announcement.updateOne(
-                { _id: announcementID },
-                { $set: updatedFields }
+        if (hasRemove)
+            updateQuery.$pull = {
+                attachments: { url: { $in: removeAttachments } }
+            };
+
+        await Announcement.updateOne({ _id: announcementID }, updateQuery);
+
+        if (hasRemove) {
+            const removedFiles = announcement.attachments.filter(
+                file => removeAttachments.includes(file.url)
             );
 
-        if (addAttachments && addAttachments.length > 0)
-            await Announcement.updateOne(
-                { _id: announcementID },
-                { $push: { attachments: { $each: addAttachments } } }
-            );
+            await Promise.all(
+                removedFiles.filter(file => file.cloudinaryId).map(file => deleteFromCloudinary(file.cloudinaryId).catch((error) => {
+                    console.error("Cloudinary deletion failed:", error.message)
+                }))
+            )
+        }
 
-        if (removeAttachments && removeAttachments.length > 0)
-            await Announcement.updateOne(
-                { _id: announcementID },
-                { $pull: { attachments: { url: { $in: removeAttachments } } } }
-            );
+        const updatedAnnouncement = await Announcement.findById(announcementID).select("title");
 
-        const updatedAnnouncement = await Announcement
-            .findById(announcementID)
-            .select("title");
-
-        if (course.students.length > 0) {
+        if (course.students?.length > 0) {
             await notifyUsers({
                 receivers: course.students,
                 sender: user._id,
@@ -186,7 +200,7 @@ export const getCourseAnnouncements = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const user=req.dbUser;
+        const user = req.dbUser;
 
         const course = await Course.findById(id);
 
@@ -228,7 +242,7 @@ export const deleteAnnouncement = async (req, res) => {
     try {
         const id = req.params.id;
 
-        const user=req.dbUser;
+        const user = req.dbUser;
 
         const announcement = await Announcement.findById(id);
 
@@ -244,9 +258,20 @@ export const deleteAnnouncement = async (req, res) => {
                 message: "You have not created this announcement so cannot delete"
             });
 
-        await Announcement.deleteOne(
-            { _id: id }
-        );
+        if (announcement.attachments?.length) {
+            await Promise.all(
+                announcement.attachments
+                    .filter(file => file.cloudinaryId)
+                    .map(file =>
+                        deleteFromCloudinary(file.cloudinaryId)
+                            .catch(err =>
+                                console.error("Cloudinary deletion failed:", error.message)
+                            )
+                    )
+            );
+        }
+
+        await announcement.deleteOne();
 
         return res.status(200).json({
             success: true,

@@ -1,67 +1,74 @@
 import mongoose, { Schema } from "mongoose";
 
-const assignmentSchema=new Schema({
-    course:{
-        type:Schema.Types.ObjectId,
-        ref:"Course",
-        required:true
+const assignmentSchema = new Schema({
+    course: {
+        type: Schema.Types.ObjectId,
+        ref: "Course",
+        required: true
     },
-    title:{
-        type:String,
-        required:true
+    title: {
+        type: String,
+        required: true
     },
-    description:{
-        type:String,
-        required:true,
+    description: {
+        type: String,
+        required: true,
     },
-    dueDate:{
-        type:Date,
-        required:true
+    dueDate: {
+        type: Date,
+        required: true
     },
-    totalMarks:{
-        type:Number,
-        required:true
+    totalMarks: {
+        type: Number,
+        required: true
     },
-    attachments:[{
-        url:{
-            type:String
+    attachments: [{
+        url: {
+            type: String
+        },
+        cloudinaryId: {
+            type: String
         }
     }],
-    createdBy:{
-        type:Schema.Types.ObjectId,
-        ref:"User",
-        required:true
+    createdBy: {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        required: true
     },
-    submissions:[{
-        student:{
-            type:Schema.Types.ObjectId,
-            ref:"User",
-            required:true
+    submissions: [{
+        student: {
+            type: Schema.Types.ObjectId,
+            ref: "User",
+            required: true
         },
-        submissionURL:{
-            type:String,
-            required:true
+        submissionURL: {
+            type: String,
+            required: true
         },
-        submittedAt:{
-            type:Date,
-            default:Date.now
+        cloudinaryId:{
+            type: String,
+            required: true
         },
-        marks:{
-            type:Number,
-            default:null
+        submittedAt: {
+            type: Date,
+            default: Date.now
         },
-        feedback:{
-            type:String
+        marks: {
+            type: Number,
+            default: null
+        },
+        feedback: {
+            type: String
         }
     }],
-    reminderSent:{
-        type:Boolean,
-        default:false
+    reminderSent: {
+        type: Boolean,
+        default: false
     },
-    createdAt:{
-        type:Date,
-        default:Date.now
+    createdAt: {
+        type: Date,
+        default: Date.now
     }
 });
 
-export const Assignment=mongoose.model("Assignment",assignmentSchema);
+export const Assignment = mongoose.model("Assignment", assignmentSchema);
