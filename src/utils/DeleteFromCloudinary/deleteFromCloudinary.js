@@ -9,6 +9,6 @@ export const deleteFromCloudinary=async(id)=>{
 
         return result;
     } catch (error) {
-        throw new Error("Failed to delete content from Cloudinary");
+        return null;
     }
 };
