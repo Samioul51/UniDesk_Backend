@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import connectDB from './db/dbConnect.js';
+import connectDB from './config/db/dbConnect.js';
 import app from './app.js';
 import http from "http";
 import { Server } from 'socket.io';
