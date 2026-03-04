@@ -199,7 +199,7 @@ export const deleteAssignment = async (req, res) => {
         if (assignment.attachments?.length) {
             await Promise.all(
                 assignment.attachments.filter(file => file.cloudinaryId).map(file => deleteFromCloudinary(file.cloudinaryId).catch((error) => {
-                    console.error("Cloudinary deletion failed");
+                    console.error("Cloudinary deletion failed:", error.message)
                 }))
             )
         }
@@ -295,15 +295,14 @@ export const updateAssignment = async (req, res) => {
 
             await Promise.all(
                 removedFiles.filter(file => file.cloudinaryId).map(file => deleteFromCloudinary(file.cloudinaryId).catch((error) => {
-                    console.error("Cloudinary deletion failed");
+                    console.error("Cloudinary deletion failed:", error.message)
                 }))
             )
-
         }
 
-        const updatedAssignment = await Assignment.findById(id);
+        const updatedAssignment = await Assignment.findById(id).select("title");
 
-        if (course && course.students.length > 0) {
+        if (course.students?.length > 0) {
             await notifyUsers({
                 receivers: course.students,
                 sender: faculty._id,
