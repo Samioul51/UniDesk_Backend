@@ -392,33 +392,83 @@ export const getMyCourses = async (req, res) => {
         const userId = req.dbUser._id;
         const role = req.dbUser.role;
 
-        let courses;
+        const page = parseInt(req.query.page) || 1;
+        const limit = 10;
+        const skip = (page - 1) * limit;
 
-        if (role === "student") {
-            courses = await Course.find({
-                students: userId
-            })
-                .populate("faculties", "name email")
-                .populate("students", "name studentID");
-        }
-        else if (role === "faculty") {
-            courses = await Course.find({
-                faculties: userId
-            })
-                .populate("faculties", "name email")
-                .populate("students", "name studentID");
-        }
-        else
+        const search = req.query.search?.trim();
+
+        const membershipFilter =
+            role === "student"
+                ? { students: userId }
+                : role === "faculty"
+                    ? { faculties: userId }
+                    : null;
+
+        if (!membershipFilter)
             return res.status(403).json({
                 success: false,
                 message: "Invalid role"
             });
 
+        const searchFilter = search
+            ? {
+                $or: [
+                    { courseCode: { $regex: search, $options: "i" } },
+                    { courseName: { $regex: search, $options: "i" } },
+                    { year: { $regex: search, $options: "i" } },
+                    { semester: { $regex: search, $options: "i" } },
+                    { session: { $regex: search, $options: "i" } },
+                    { department: { $regex: search, $options: "i" } }
+                ]
+            }
+            : {};
+
+        const filter = {
+            ...membershipFilter,
+            ...searchFilter
+        };
+
+        if (search) {
+            const courses = await Course.find(filter).populate("faculties", "name email").populate("students", "name studentID").sort({ status: 1, updatedAt: -1 });
+
+            const activeCourses = courses.filter(c => c.status === "active");
+            const completedCourses = courses.filter(c => c.status === "completed");
+
+            return res.status(200).json({
+                success: true,
+                search: true,
+                activeCourses,
+                completedCourses
+            });
+        }
+
+        const activeCourses = await Course.find({
+            ...membershipFilter,
+            status: "active"
+        }).populate("faculties", "name email").populate("students", "name studentID").sort({ updatedAt: -1 });
+
+        const completedCourses = await Course.find({
+            ...membershipFilter,
+            status: "completed"
+        }).populate("faculties", "name email").populate("students", "name studentID").sort({ updatedAt: -1 }).skip(skip).limit(limit);
+
+        const totalCompleted = await Course.countDocuments({
+            ...membershipFilter,
+            status: "completed"
+        });
+
         return res.status(200).json({
             success: true,
-            count: courses.length,
-            courses
-        })
+            search: false,
+            activeCourses,
+            completedCourses,
+            completedPagination: {
+                page,
+                totalPages: Math.ceil(totalCompleted / limit),
+                totalCompleted
+            }
+        });
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }
