@@ -1,5 +1,5 @@
 import express from "express";
-import { getItems, getLeaderboard, getSingleItem, itemStatusUpdate, itemUpload } from "../controllers/RepositoryController/repository.controller.js";
+import { deleteItem, getItems, getLeaderboard, getSingleItem, itemStatusUpdate, itemUpload } from "../controllers/RepositoryController/repository.controller.js";
 import { verifyFirebaseToken } from "../middlewares/Auth/auth.middleware.js";
 import { verifyRole } from "../middlewares/Role/role.middleware.js";
 
@@ -24,5 +24,9 @@ router.get("/repository/:id",verifyFirebaseToken,verifyRole(["admin","student","
 // Status update
 
 router.patch("/repository/:id",verifyFirebaseToken,verifyRole(["admin"]),itemStatusUpdate);
+
+// Item deletion
+
+router.delete("/repository/:id",verifyFirebaseToken,verifyRole(["admin"]),deleteItem);
 
 export default router;

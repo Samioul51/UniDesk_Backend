@@ -33,6 +33,10 @@ const repositorySchema = new Schema({
         type: String,
         required: true
     },
+    cloudinaryId:{
+        type:String,
+        required:true
+    },
     uploader: {
         type: Schema.Types.ObjectId,
         ref: "User",
