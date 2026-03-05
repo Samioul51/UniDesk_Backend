@@ -352,7 +352,7 @@ export const adminAllCourses = async (req, res) => {
 export const singleCourse = async (req, res) => {
     try {
         const id = req.params.id;
-        const course = await Course.findById(id);
+        const course = await Course.findById(id).populate("faculties", "name email photoURL").populate("students", "name email photoURL studentID");
 
         if (!course)
             return res.status(404).json({
@@ -362,11 +362,11 @@ export const singleCourse = async (req, res) => {
 
         if (req.dbUser.role !== "admin") {
             const isFaculty = course.faculties.some(
-                t => t.toString() === req.dbUser._id.toString()
+                t => t._id.toString() === req.dbUser._id.toString()
             );
 
             const isStudent = course.students.some(
-                s => s.toString() === req.dbUser._id.toString()
+                s => s._id.toString() === req.dbUser._id.toString()
             );
 
             if (!isFaculty && !isStudent)
