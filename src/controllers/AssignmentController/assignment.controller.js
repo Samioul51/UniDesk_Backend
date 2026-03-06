@@ -3,6 +3,7 @@ import { Assignment } from "../../models/AssignmentModel/assignment.model.js";
 import { Course } from "../../models/CourseModel/course.model.js";
 import { notifyUsers } from "../../utils/NotificationEngine/notificationService.js";
 import { deleteFromCloudinary } from "../../utils/DeleteFromCloudinary/deleteFromCloudinary.js";
+import { Submission } from "../../models/AssignmentSubmissionModel/submission.model.js";
 
 // Course wise assignments
 
@@ -71,7 +72,7 @@ export const uploadAssignment = async (req, res) => {
         if (!title || !description || !dueDate || !totalMarks)
             return res.status(400).json({
                 success: false,
-                message: "Title, Description, DueDate, Total marks and uploaderID required"
+                message: "Title, Description, DueDate, Total marks required"
             });
 
         const assignment = {
@@ -132,7 +133,11 @@ export const getAssignment = async (req, res) => {
                 message: "Course not found"
             });
 
-        const isOwner = (course.faculties.some(t => t.toString() === user._id.toString())) || (course.students.some(s => s.toString() === user._id.toString()));
+        const isFaculty = course.faculties.some(t => t.toString() === user._id.toString())
+
+        const isStudent = course.students.some(s => s.toString() === user._id.toString())
+
+        const isOwner = isFaculty || isStudent;
 
         if (!isOwner)
             return res.status(403).json({
@@ -143,7 +148,7 @@ export const getAssignment = async (req, res) => {
         const assignment = await Assignment.findOne({
             _id: assignmentID,
             course: courseID
-        });
+        }).lean();
 
         if (!assignment)
             return res.status(404).json({
@@ -151,9 +156,18 @@ export const getAssignment = async (req, res) => {
                 message: "Assignment for this course not found"
             });
 
+        let submission = null;
+
+        if (isStudent)
+            submission = await Submission.findOne({
+                assignment: assignmentID,
+                student: user._id
+            }).populate("gradedBy", "name email").lean();
+
         return res.status(200).json({
             success: true,
-            assignment
+            assignment,
+            submission
         })
     } catch (error) {
         return res.status(500).json({
@@ -203,6 +217,8 @@ export const deleteAssignment = async (req, res) => {
                 }))
             )
         }
+
+        await Submission.deleteMany({ assignment: id });
 
         await assignment.deleteOne();
 
@@ -342,6 +358,12 @@ export const submitAssignment = async (req, res) => {
 
         const course = await Course.findById(assignment.course);
 
+        if (!course)
+            return res.status(404).json({
+                success: false,
+                message: "Course not found"
+            });
+
         const isStudent = course.students.some(
             s => s.toString() === student._id.toString()
         );
@@ -352,12 +374,12 @@ export const submitAssignment = async (req, res) => {
                 message: "You are not an student of this course"
             });
 
-        const { submissionURL } = req.body;
+        const { submissionURL, cloudinaryId } = req.body;
 
-        if (!submissionURL)
+        if (!submissionURL || !cloudinaryId)
             return res.status(400).json({
                 success: false,
-                message: "Submission URL required"
+                message: "Submission URL and cloudinaryId required"
             });
 
         const now = new Date();
@@ -368,9 +390,10 @@ export const submitAssignment = async (req, res) => {
                 message: "Submission deadline has passed"
             });
 
-        const alreadySubmitted = assignment.submissions.some(
-            sub => sub.student.toString() === student._id.toString()
-        );
+        const alreadySubmitted = await Submission.findOne({
+            assignment: id,
+            student: student._id
+        });
 
         if (alreadySubmitted)
             return res.status(409).json({
@@ -378,18 +401,13 @@ export const submitAssignment = async (req, res) => {
                 message: "You have already submitted this assignment"
             });
 
-        await Assignment.updateOne(
-            { _id: id },
-            {
-                $push: {
-                    submissions: {
-                        student: student._id,
-                        submissionURL: submissionURL,
-                        submittedAt: new Date()
-                    }
-                }
-            }
-        );
+        await Submission.create({
+            assignment: id,
+            course: assignment.course,
+            student: student._id,
+            submissionURL,
+            cloudinaryId
+        });
 
         return res.status(200).json({
             success: true,
@@ -408,8 +426,7 @@ export const getAssignmentSubmissions = async (req, res) => {
 
         const faculty = req.dbUser;
 
-        const assignment = await Assignment.findById(id)
-            .populate("submissions.student", "name email studentID");
+        const assignment = await Assignment.findById(id).lean();
 
         if (!assignment)
             return res.status(404).json({
@@ -417,7 +434,7 @@ export const getAssignmentSubmissions = async (req, res) => {
                 message: "Assignment not found"
             });
 
-        const course = await Course.findById(assignment.course);
+        const course = await Course.findById(assignment.course).lean();
 
         if (!course)
             return res.status(404).json({
@@ -435,10 +452,14 @@ export const getAssignmentSubmissions = async (req, res) => {
                 message: "Only faculty of this course can view submissions"
             });
 
+        const submissions = await Submission.find({
+            assignment: id
+        }).populate("student", "name email studentID").populate("assignment", "title").populate("course", "courseName courseCode").lean();
+
         return res.status(200).json({
             success: true,
-            totalSubmissions: assignment.submissions.length,
-            submissions: assignment.submissions
+            totalSubmissions: submissions.length,
+            submissions
         });
 
     } catch (error) {
@@ -455,7 +476,7 @@ export const gradeSubmission = async (req, res) => {
 
         const faculty = req.dbUser;
 
-        const assignment = await Assignment.findById(id);
+        const assignment = await Assignment.findById(id).lean();
 
         if (!assignment)
             return res.status(404).json({
@@ -463,7 +484,7 @@ export const gradeSubmission = async (req, res) => {
                 message: "Assignment not found"
             });
 
-        const course = await Course.findById(assignment.course);
+        const course = await Course.findById(assignment.course).lean();
 
         if (!course)
             return res.status(404).json({
@@ -481,7 +502,10 @@ export const gradeSubmission = async (req, res) => {
                 message: "Only faculty of this course can grade submissions"
             });
 
-        const submission = assignment.submissions.id(submissionId);
+        const submission = await Submission.findOne({
+            _id: submissionId,
+            assignment: id
+        });
 
         if (!submission)
             return res.status(404).json({
@@ -501,11 +525,18 @@ export const gradeSubmission = async (req, res) => {
                 message: "Marks exceed total marks"
             });
 
-        submission.marks = marks;
-        if (feedback)
-            submission.feedback = feedback;
+        if (marks < 0)
+            return res.status(400).json({
+                success: false,
+                message: "Negative marks cannot be provided"
+            });
 
-        await assignment.save();
+        submission.marks = marks;
+        submission.feedback = feedback || "";
+        submission.isGraded = true;
+        submission.gradedBy = faculty._id;
+
+        await submission.save();
 
         await notifyUsers({
             receivers: [submission.student],
@@ -538,28 +569,50 @@ export const unsubmitAssignment = async (req, res) => {
 
         const student = req.dbUser;
 
-        const assignment = await Assignment.findById(id).select("dueDate submissions");
+        const submission = await Submission.findById(id);
+
+        if (!submission)
+            return res.status(404).json({
+                success: false,
+                message: "Submission not found"
+            });
+
+        if (submission.student.toString() !== student._id.toString())
+            return res.status(403).json({
+                success: false,
+                message: "You are not allowed to delete this submission"
+            });
+
+        const assignment = await Assignment.findById(submission.assignment).select("dueDate course");
 
         if (!assignment)
             return res.status(404).json({
                 success: false,
                 message: "Assignment not found"
             });
+        
+        const course = await Course.findById(assignment.course);
+
+        if (!course)
+            return res.status(404).json({
+                success: false,
+                message: "Course not found"
+            });
+
+        const isStudent = course.students.some(
+            s => s.toString() === student._id.toString()
+        );
+
+        if (!isStudent)
+            return res.status(403).json({
+                success: false,
+                message: "You are not enrolled in this course"
+            });
 
         if (new Date() > assignment.dueDate)
             return res.status(403).json({
                 success: false,
                 message: "Submission cannot be deleted after due date"
-            });
-
-        const submission = assignment.submissions.find(
-            s => s.student.toString() === student._id.toString()
-        );
-
-        if (!submission)
-            return res.status(404).json({
-                success: false,
-                message: "Submission not found"
             });
 
         if (submission.marks !== null)
@@ -576,14 +629,214 @@ export const unsubmitAssignment = async (req, res) => {
             }
         }
 
-        await Assignment.updateOne(
-            { _id: id },
-            { $pull: { submissions: { student: student._id } } }
-        );
+        await submission.deleteOne();
 
         return res.status(200).json({
             success: true,
             message: "Submission unsubmitted successfully"
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        });
+    }
+};
+
+// Recheck request by student
+
+export const requestRecheckSubmission = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const { message } = req.body;
+
+        const student = req.dbUser;
+
+        const submission = await Submission.findOne({
+            _id: id,
+            student: student._id
+        });
+
+        if (!submission)
+            return res.status(404).json({
+                success: false,
+                message: "Submission not found"
+            });
+
+        if (!submission.isGraded)
+            return res.status(400).json({
+                success: false,
+                message: "Submission is not graded yet"
+            });
+
+        if (submission.recheckRequested)
+            return res.status(400).json({
+                success: false,
+                message: "Recheck already requested"
+            });
+
+        submission.recheckRequested = true;
+        submission.recheckMessage = message || "";
+
+        await submission.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Recheck request submitted successfully"
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        });
+    }
+};
+
+// Resolve recheck
+
+export const resolveRecheckSubmission = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const { marks, feedback } = req.body;
+
+        const faculty = req.dbUser;
+
+        const submission = await Submission.findById(id).populate("assignment");
+
+        if (!submission)
+            return res.status(404).json({
+                success: false,
+                message: "Submission not found"
+            });
+
+        const course = await Course.findById(submission.assignment.course);
+
+        if (!course)
+            return res.status(404).json({
+                success: false,
+                message: "Course not found"
+            });
+
+        const isFaculty = course.faculties.some(
+            t => t.toString() === faculty._id.toString()
+        );
+
+        if (!isFaculty)
+            return res.status(403).json({
+                success: false,
+                message: "Only course faculty can resolve recheck"
+            });
+
+        if (!submission.recheckRequested)
+            return res.status(400).json({
+                success: false,
+                message: "No recheck requested"
+            });
+
+        if (submission.recheckResolved)
+            return res.status(400).json({
+                success: false,
+                message: "Recheck already resolved"
+            });
+
+        if (marks !== undefined) {
+            if (marks > submission.assignment.totalMarks)
+                return res.status(400).json({
+                    success: false,
+                    message: "Marks exceed total marks"
+                });
+            if (marks < 0)
+                return res.status(400).json({
+                    success: false,
+                    message: "Negative marks cannot be provided"
+                });
+            submission.marks = marks;
+        }
+
+        submission.recheckResolved = true;
+        submission.recheckFeedback = feedback || "";
+        submission.gradedBy = faculty._id;
+
+        await submission.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Recheck resolved successfully"
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        });
+    }
+};
+
+// Get all courses pending assignments
+
+export const getPendingGrading=async(req,res)=>{
+    try {
+        const faculty=req.dbUser;
+
+        const courses=await Course.find({
+            faculties:faculty._id,
+            status:"active"
+        }).select("_id courseName courseCode");
+
+        if(!courses.length)
+            return res.status(200).json({
+                success:true,
+                assignments:[]
+            });
+            
+        const courseIDs=courses.map(c=>c._id);
+
+        const assignments=await Assignment.find({
+            course:{$in:courseIDs}
+        }).select("_id title course dueDate totalMarks");
+
+        if(!assignments.length)
+            return res.status(200).json({
+                success:true,
+                assignments:[]
+            });
+
+        const assignmentsIDs=assignments.map(c=>c._id);
+
+        const pending=await Submission.aggregate([
+            {
+                $match:{
+                    assignment:{$in:assignmentsIDs},
+                    isGraded:false
+                }
+            },
+            {
+                $group:{
+                    _id:"$assignment",
+                    pendingGrading:{$sum:1}
+                }
+            }
+        ]);
+
+        const pendingMap={};
+        pending.forEach(p=>{
+            pendingMap[p._id.toString()]=p.pendingGrading;
+        });
+
+        const result=assignments.map(a=>{
+            const course=courses.find(
+                c=>c._id.toString()===a.course.toString()
+            );
+
+            return {
+                title:a.title,
+                courseName:course?.courseName,
+                courseCode:course?.courseCode,
+                dueDate:a?.dueDate,
+                totalMarks:a?.totalMarks,
+                pendingGrading:pendingMap[a._id.toString()] || 0
+            };
+        }).filter(a=>a.pendingGrading>0);
+
+        return res.status(200).json({
+            success: true,
+            assignments: result
         });
     } catch (error) {
         return res.status(500).json({

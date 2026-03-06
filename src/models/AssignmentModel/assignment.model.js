@@ -35,40 +35,12 @@ const assignmentSchema = new Schema({
         ref: "User",
         required: true
     },
-    submissions: [{
-        student: {
-            type: Schema.Types.ObjectId,
-            ref: "User",
-            required: true
-        },
-        submissionURL: {
-            type: String,
-            required: true
-        },
-        cloudinaryId:{
-            type: String,
-            required: true
-        },
-        submittedAt: {
-            type: Date,
-            default: Date.now
-        },
-        marks: {
-            type: Number,
-            default: null
-        },
-        feedback: {
-            type: String
-        }
-    }],
     reminderSent: {
         type: Boolean,
         default: false
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now
     }
+},{
+    timestamps:true
 });
 
 export const Assignment = mongoose.model("Assignment", assignmentSchema);
