@@ -1,5 +1,5 @@
 import express from "express";
-import { courseAssignments, deleteAssignment, getAssignment, getAssignmentSubmissions, gradeSubmission, requestRecheckSubmission, resolveRecheckSubmission, submitAssignment, unsubmitAssignment, updateAssignment, uploadAssignment } from "../controllers/AssignmentController/assignment.controller.js";
+import { courseAssignments, deleteAssignment, getAssignment, getAssignmentSubmissions, getPendingGrading, gradeSubmission, requestRecheckSubmission, resolveRecheckSubmission, submitAssignment, unsubmitAssignment, updateAssignment, uploadAssignment } from "../controllers/AssignmentController/assignment.controller.js";
 import { verifyFirebaseToken } from "../middlewares/Auth/auth.middleware.js";
 import { verifyRole } from "../middlewares/Role/role.middleware.js";
 
@@ -47,6 +47,10 @@ router.post("/submission/recheck/:id", verifyFirebaseToken, verifyRole(["student
 
 // Resolve submission request by faculty
 
-router.patch("/submission/recheck/:id", verifyFirebaseToken, verifyRole(["faculty"]), resolveRecheckSubmission)
+router.patch("/submission/recheck/:id", verifyFirebaseToken, verifyRole(["faculty"]), resolveRecheckSubmission);
+
+// Get all courses pending assignments
+
+router.get("/submission/faculty/pending", verifyFirebaseToken, verifyRole(["faculty"]),getPendingGrading);
 
 export default router;

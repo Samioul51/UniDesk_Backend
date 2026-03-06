@@ -768,3 +768,80 @@ export const resolveRecheckSubmission = async (req, res) => {
     }
 };
 
+// Get all courses pending assignments
+
+export const getPendingGrading=async(req,res)=>{
+    try {
+        const faculty=req.dbUser;
+
+        const courses=await Course.find({
+            faculties:faculty._id,
+            status:"active"
+        }).select("_id courseName courseCode");
+
+        if(!courses.length)
+            return res.status(200).json({
+                success:true,
+                assignments:[]
+            });
+            
+        const courseIDs=courses.map(c=>c._id);
+
+        const assignments=await Assignment.find({
+            course:{$in:courseIDs}
+        }).select("_id title course dueDate totalMarks");
+
+        if(!assignments.length)
+            return res.status(200).json({
+                success:true,
+                assignments:[]
+            });
+
+        const assignmentsIDs=assignments.map(c=>c._id);
+
+        const pending=await Submission.aggregate([
+            {
+                $match:{
+                    assignment:{$in:assignmentsIDs},
+                    isGraded:false
+                }
+            },
+            {
+                $group:{
+                    _id:"$assignment",
+                    pendingGrading:{$sum:1}
+                }
+            }
+        ]);
+
+        const pendingMap={};
+        pending.forEach(p=>{
+            pendingMap[p._id.toString()]=p.pendingGrading;
+        });
+
+        const result=assignments.map(a=>{
+            const course=courses.find(
+                c=>c._id.toString()===a.course.toString()
+            );
+
+            return {
+                title:a.title,
+                courseName:course?.courseName,
+                courseCode:course?.courseCode,
+                dueDate:a?.dueDate,
+                totalMarks:a?.totalMarks,
+                pendingGrading:pendingMap[a._id.toString()] || 0
+            };
+        }).filter(a=>a.pendingGrading>0);
+
+        return res.status(200).json({
+            success: true,
+            assignments: result
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        });
+    }
+};
+
