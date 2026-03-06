@@ -11,13 +11,13 @@ const userSchema = new Schema({
         required: true,
         unique: true,
         trim: true,
-        lowercase:true,
+        lowercase: true,
         index: true
     },
     role: {
         type: String,
         required: true,
-        enum: ["student", "faculty","admin"]
+        enum: ["student", "faculty", "admin"]
     },
     department: {
         type: String,
@@ -41,12 +41,30 @@ const userSchema = new Schema({
             return this.role === "faculty";
         }
     },
-    room:{
+    room: {
         type: String,
         required: function () {
             return this.role === "faculty";
         },
-        trim:true
+        trim: true
+    },
+    biography: {
+        type: String,
+        trim: true,
+        default:"",
+        required: function () {
+            return this.role === "faculty";
+        }
+    },
+    researchInterests: {
+        type: [{
+            type: String,
+            trim: true
+        }],
+        default: [],
+        required: function () {
+            return this.role === "faculty";
+        }
     },
     photoURL: {
         type: String,
@@ -57,11 +75,11 @@ const userSchema = new Schema({
     },
     status: {
         type: String,
-        enum:["pending","verified","suspended"],
-        default:"pending"
+        enum: ["pending", "verified", "suspended"],
+        default: "pending"
     }
-},{
-    timestamps:true
+}, {
+    timestamps: true
 });
 
 export const User = mongoose.model("User", userSchema);

@@ -382,7 +382,7 @@ export const getSingleUser = async (req, res) => {
 export const updateProfile = async (req, res) => {
     try {
         const email = req.params.email?.trim().toLowerCase();
-        const { name, photoURL, photoId, room } = req.body;
+        const { name, photoURL, photoId, room,biography,researchInterests } = req.body;
 
         if (req.user.email !== email)
             return res.status(403).json({
@@ -390,16 +390,16 @@ export const updateProfile = async (req, res) => {
                 message: "You can update only your own profile"
             });
 
-        if (!name && !photoURL && !photoId && !room)
+        if (!name && !photoURL && !photoId && !room && !biography && !researchInterests)
             return res.status(400).json({
                 success: false,
                 message: "At least one field is required to update profile"
             });
 
-        if (room && req.dbUser.role !== "faculty")
+        if ((room || biography || researchInterests) && req.dbUser.role !== "faculty")
             return res.status(403).json({
                 success: false,
-                message: "Only faculty can update room"
+                message: "Only faculty can update room, biography and research interests"
             });
 
         if ((photoURL && !photoId) || (photoId && !photoURL))
@@ -421,6 +421,12 @@ export const updateProfile = async (req, res) => {
 
         if (room)
             user.room = room;
+
+        if(biography)
+            user.biography=biography;
+
+        if(researchInterests)
+            user.researchInterests=researchInterests;
 
         if (photoURL && photoId) {
             if (user.photoId && user.photoId !== photoId) {
@@ -462,9 +468,9 @@ export const adminUpdateProfile = async (req, res) => {
                 message: "User email is required"
             });
 
-        const { name, photoURL, photoId, status, room } = req.body;
+        const { name, photoURL, photoId, status, room,biography, researchInterests } = req.body;
 
-        if (!name && !photoURL && !photoId && !status && !room)
+        if (!name && !photoURL && !photoId && !status && !room && !biography && !researchInterests)
             return res.status(400).json({
                 success: false,
                 message: "At least one field is required to update profile"
@@ -499,6 +505,12 @@ export const adminUpdateProfile = async (req, res) => {
 
         if (room)
             user.room = room;
+
+        if (biography)
+            user.biography = biography;
+
+        if (researchInterests)
+            user.researchInterests = researchInterests;
 
         if (cleanStatus)
             user.status = cleanStatus;
