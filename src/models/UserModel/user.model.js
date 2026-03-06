@@ -51,20 +51,14 @@ const userSchema = new Schema({
     biography: {
         type: String,
         trim: true,
-        default:"",
-        required: function () {
-            return this.role === "faculty";
-        }
+        default:""
     },
     researchInterests: {
         type: [{
             type: String,
             trim: true
         }],
-        default: [],
-        required: function () {
-            return this.role === "faculty";
-        }
+        default: []
     },
     photoURL: {
         type: String,
