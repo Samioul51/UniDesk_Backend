@@ -44,15 +44,29 @@ const submissionSchema = new Schema({
     feedback: {
         type: String
     },
+    recheckRequested: {
+        type: Boolean,
+        default: false
+    },
+    recheckMessage: {
+        type: String
+    },
+    recheckResolved: {
+        type: Boolean,
+        default: false
+    },
+    recheckFeedback:{
+        type:String
+    }
 });
 
 submissionSchema.index(
-    { 
-        assignment: 1, 
-        student: 1 
+    {
+        assignment: 1,
+        student: 1
     },
-    { 
-        unique: true 
+    {
+        unique: true
     }
 );
 
