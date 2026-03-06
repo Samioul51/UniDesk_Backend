@@ -3,6 +3,7 @@ import { Assignment } from "../../models/AssignmentModel/assignment.model.js";
 import { Course } from "../../models/CourseModel/course.model.js";
 import { notifyUsers } from "../../utils/NotificationEngine/notificationService.js";
 import { deleteFromCloudinary } from "../../utils/DeleteFromCloudinary/deleteFromCloudinary.js";
+import { Submission } from "../../models/AssignmentSubmissionModel/submission.model.js";
 
 // Course wise assignments
 
@@ -342,6 +343,12 @@ export const submitAssignment = async (req, res) => {
 
         const course = await Course.findById(assignment.course);
 
+        if (!course)
+            return res.status(404).json({
+                success: false,
+                message: "Course not found"
+            });
+
         const isStudent = course.students.some(
             s => s.toString() === student._id.toString()
         );
@@ -352,9 +359,9 @@ export const submitAssignment = async (req, res) => {
                 message: "You are not an student of this course"
             });
 
-        const { submissionURL } = req.body;
+        const { submissionURL, cloudinaryId } = req.body;
 
-        if (!submissionURL)
+        if (!submissionURL || !cloudinaryId)
             return res.status(400).json({
                 success: false,
                 message: "Submission URL required"
@@ -368,9 +375,10 @@ export const submitAssignment = async (req, res) => {
                 message: "Submission deadline has passed"
             });
 
-        const alreadySubmitted = assignment.submissions.some(
-            sub => sub.student.toString() === student._id.toString()
-        );
+        const alreadySubmitted = await Submission.findOne({
+            assignment: id,
+            student: student._id
+        });
 
         if (alreadySubmitted)
             return res.status(409).json({
@@ -378,18 +386,13 @@ export const submitAssignment = async (req, res) => {
                 message: "You have already submitted this assignment"
             });
 
-        await Assignment.updateOne(
-            { _id: id },
-            {
-                $push: {
-                    submissions: {
-                        student: student._id,
-                        submissionURL: submissionURL,
-                        submittedAt: new Date()
-                    }
-                }
-            }
-        );
+        await Submission.create({
+            assignment: id,
+            course: assignment.course,
+            student: student._id,
+            submissionURL,
+            cloudinaryId
+        });
 
         return res.status(200).json({
             success: true,
@@ -408,8 +411,7 @@ export const getAssignmentSubmissions = async (req, res) => {
 
         const faculty = req.dbUser;
 
-        const assignment = await Assignment.findById(id)
-            .populate("submissions.student", "name email studentID");
+        const assignment = await Assignment.findById(id).lean();
 
         if (!assignment)
             return res.status(404).json({
@@ -417,7 +419,7 @@ export const getAssignmentSubmissions = async (req, res) => {
                 message: "Assignment not found"
             });
 
-        const course = await Course.findById(assignment.course);
+        const course = await Course.findById(assignment.course).lean();
 
         if (!course)
             return res.status(404).json({
@@ -435,10 +437,14 @@ export const getAssignmentSubmissions = async (req, res) => {
                 message: "Only faculty of this course can view submissions"
             });
 
+        const submissions=await Submission.find({
+            assignment:id
+        }).populate("student","name email studentID").populate("assignment","title").populate("course","courseName courseCode").lean();
+
         return res.status(200).json({
             success: true,
-            totalSubmissions: assignment.submissions.length,
-            submissions: assignment.submissions
+            totalSubmissions: submissions.length,
+            submissions
         });
 
     } catch (error) {
