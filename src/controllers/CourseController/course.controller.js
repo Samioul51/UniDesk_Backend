@@ -430,7 +430,7 @@ export const getMyCourses = async (req, res) => {
         };
 
         if (search) {
-            const courses = await Course.find(filter).populate("faculties", "name email").populate("students", "name studentID").sort({ status: 1, updatedAt: -1 });
+            const courses = await Course.find(filter).populate("faculties", "name email photoURL").populate("students", "name email studentID").sort({ status: 1, updatedAt: -1 });
 
             const activeCourses = courses.filter(c => c.status === "active");
             const completedCourses = courses.filter(c => c.status === "completed");
@@ -446,12 +446,12 @@ export const getMyCourses = async (req, res) => {
         const activeCourses = await Course.find({
             ...membershipFilter,
             status: "active"
-        }).populate("faculties", "name email").populate("students", "name studentID").sort({ updatedAt: -1 });
+        }).populate("faculties", "name email photoURL").populate("students", "name email studentID").sort({ updatedAt: -1 });
 
         const completedCourses = await Course.find({
             ...membershipFilter,
             status: "completed"
-        }).populate("faculties", "name email").populate("students", "name studentID").sort({ updatedAt: -1 }).skip(skip).limit(limit);
+        }).populate("faculties", "name email photoURL").populate("students", "name email studentID").sort({ updatedAt: -1 }).skip(skip).limit(limit);
 
         const totalCompleted = await Course.countDocuments({
             ...membershipFilter,
