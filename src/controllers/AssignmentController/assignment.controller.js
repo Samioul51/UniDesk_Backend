@@ -4,15 +4,7 @@ import { Course } from "../../models/CourseModel/course.model.js";
 import { notifyUsers } from "../../utils/NotificationEngine/notificationService.js";
 import { deleteFromCloudinary } from "../../utils/DeleteFromCloudinary/deleteFromCloudinary.js";
 import { Submission } from "../../models/AssignmentSubmissionModel/submission.model.js";
-
-// Helper functions
-
-const allowedResourceTypes = ["image", "video", "raw"];
-
-const isValidAttachment = (a) => a && typeof a.url === "string" && a.url.trim() && typeof a.cloudinaryId === "string" && a.cloudinaryId.trim() && typeof a.resourceType === "string" && allowedResourceTypes.includes(a.resourceType);
-
-const validateAttachments = (arr) => Array.isArray(arr) && arr.every(isValidAttachment);
-
+import { validateAttachments } from "../../utils/CloudinaryValidation/cloudinaryValidation.js";
 
 // Course wise assignments
 
@@ -104,8 +96,6 @@ export const uploadAssignment = async (req, res) => {
             if (attachments.length > 0)
                 assignment.attachments = attachments;
         }
-
-
 
         if (isNaN(new Date(dueDate)))
             return res.status(400).json({

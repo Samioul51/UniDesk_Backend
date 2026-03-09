@@ -1,6 +1,7 @@
 import { notificationTypes } from "../../constants/notificationTypes.js";
 import { Announcement } from "../../models/AnnouncementModel/announcement.model.js";
 import { Course } from "../../models/CourseModel/course.model.js";
+import { validateAttachments } from "../../utils/CloudinaryValidation/cloudinaryValidation.js";
 import { deleteFromCloudinary } from "../../utils/DeleteFromCloudinary/deleteFromCloudinary.js";
 import { notifyUsers } from "../../utils/NotificationEngine/notificationService.js";
 
@@ -49,8 +50,15 @@ export const createAnnouncement = async (req, res) => {
             faculty: user._id,
         };
 
-        if (attachments)
+        if (attachments !== undefined) {
+            if (!Array.isArray(attachments) || !validateAttachments(attachments)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Each attachment needs url, cloudinaryId and valid resourceType"
+                });
+            }
             announcement.attachments = attachments;
+        }
 
         const result = await Announcement.create(announcement);
 
@@ -74,7 +82,7 @@ export const createAnnouncement = async (req, res) => {
         return res.status(201).json({
             success: true,
             message: "Announcement created successfully",
-            announcement:result
+            announcement: result
         });
 
     } catch (error) {
@@ -89,6 +97,15 @@ export const updateAnnouncement = async (req, res) => {
         const { courseID, announcementID } = req.params;
         const user = req.dbUser;
         const { title, description, addAttachments, removeAttachments } = req.body;
+
+        if (addAttachments !== undefined) {
+            if (!Array.isArray(addAttachments) || !validateAttachments(addAttachments)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Each new attachment needs url, cloudinaryId and valid resourceType"
+                });
+            }
+        }
 
         const announcement = await Announcement.findById(announcementID);
 
