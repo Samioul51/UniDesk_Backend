@@ -9,11 +9,11 @@ import { notifyUsers } from "../../utils/NotificationEngine/notificationService.
 
 export const itemUpload = async (req, res) => {
     try {
-        const { title, courseCode, courseName, year, semester, itemType, url, description } = req.body;
+        const { title, courseCode, courseName, year, semester, itemType, url, description,cloudinaryId } = req.body;
 
         const uploader = req.dbUser._id;
 
-        if (!title || !courseCode || !courseName || !year || !semester || !itemType || !url || !description)
+        if (!title || !courseCode || !courseName || !year || !semester || !itemType || !url || !description || !cloudinaryId)
             return res.status(400).json({
                 success: false,
                 message: "All fields required"
@@ -27,6 +27,7 @@ export const itemUpload = async (req, res) => {
             semester,
             itemType,
             url,
+            cloudinaryId,
             uploader,
             description,
             status: "pending"

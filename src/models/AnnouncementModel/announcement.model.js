@@ -31,11 +31,9 @@ const announcementSchema = new Schema({
         cloudinaryId:{
             type:String
         }
-    }],
-    createdAt: {
-        type: Date,
-        default: Date.now
-    }
+    }]
+},{
+    timestamps:true
 });
 
 export const Announcement = mongoose.model("Announcement", announcementSchema);

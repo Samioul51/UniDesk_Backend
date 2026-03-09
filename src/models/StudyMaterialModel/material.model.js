@@ -20,15 +20,17 @@ const materialSchema=new Schema({
         type:String,
         required:true
     },
+    cloudinaryId:{
+        type:String,
+        required:true
+    },
     uploader:{
         type:Schema.Types.ObjectId,
         ref:"User",
         required:true
-    },
-    createdAt:{
-        type:Date,
-        default:Date.now
     }
+},{
+    timestamps:true
 });
 
 export const Material=mongoose.model("Material",materialSchema);

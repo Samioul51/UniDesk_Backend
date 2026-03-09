@@ -1,7 +1,7 @@
 import { notificationTypes } from "../../constants/notificationTypes.js";
 import { Announcement } from "../../models/AnnouncementModel/announcement.model.js";
 import { Course } from "../../models/CourseModel/course.model.js";
-import { User } from "../../models/UserModel/user.model.js";
+import { deleteFromCloudinary } from "../../utils/DeleteFromCloudinary/deleteFromCloudinary.js";
 import { notifyUsers } from "../../utils/NotificationEngine/notificationService.js";
 
 // Announcement creation
@@ -55,21 +55,26 @@ export const createAnnouncement = async (req, res) => {
         const result = await Announcement.create(announcement);
 
         if (courseExists.students.length > 0) {
-            await notifyUsers({
-                receivers: courseExists.students,
-                sender: user._id,
-                type: notificationTypes.newAnnouncement,
-                title: "New Announcement",
-                message: `${title}`,
-                entityID: result._id,
-                entityModel: "Announcement",
-                redirectURL: `/announcements/${result._id}`
-            });
+            try {
+                await notifyUsers({
+                    receivers: courseExists.students,
+                    sender: user._id,
+                    type: notificationTypes.newAnnouncement,
+                    title: "New Announcement",
+                    message: `${title}`,
+                    entityID: result._id,
+                    entityModel: "Announcement",
+                    redirectURL: `/announcements/${result._id}`
+                });
+            } catch (error) {
+                console.error(error.message);
+            }
         }
 
         return res.status(201).json({
             success: true,
-            message: "Announcement created successfully"
+            message: "Announcement created successfully",
+            announcement:result
         });
 
     } catch (error) {
