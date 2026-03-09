@@ -258,7 +258,7 @@ export const deleteAssignment = async (req, res) => {
 export const updateAssignment = async (req, res) => {
     try {
         const id = req.params.id;
-        const { title, description, addAttachments, removeAttachments } = req.body;
+        const { title, description, dueDate, totalMarks, addAttachments, removeAttachments } = req.body;
 
         if (addAttachments !== undefined) {
             if (!Array.isArray(addAttachments) || !validateAttachments(addAttachments)) {
@@ -301,12 +301,30 @@ export const updateAssignment = async (req, res) => {
 
         const cleanDescription = typeof description === "string" ? description.trim() : null;
 
+        const parsedDueDate = (dueDate !== undefined && dueDate !== null && dueDate !== "") ? new Date(dueDate) : null;
+
+        if (dueDate !== undefined && (Number.isNaN(parsedDueDate?.getTime?.())))
+            return res.status(400).json({
+                success: false,
+                message: "Invalid due date"
+            });
+
+        const parsedTotalMarks = (totalMarks !== undefined && totalMarks !== null && totalMarks !== "") ? Number(totalMarks) : null;
+
+        if (totalMarks !== undefined && (!Number.isFinite(parsedTotalMarks) || parsedTotalMarks <= 0))
+            return res.status(400).json({
+                success: false,
+                message: "totalMarks must be greater than 0"
+            });
+
         const hasTitle = cleanTitle && cleanTitle !== assignment.title;
         const hasDescription = cleanDescription && cleanDescription !== assignment.description;
+        const hasDueDate = parsedDueDate && parsedDueDate.getTime() !== new Date(assignment.dueDate).getTime();
+        const hasTotalMarks = parsedTotalMarks && parsedTotalMarks !== assignment.totalMarks;
         const hasAdd = Array.isArray(addAttachments) && addAttachments.length > 0;
         const hasRemove = Array.isArray(removeAttachments) && removeAttachments.length > 0;
 
-        if (!hasTitle && !hasDescription && !hasAdd && !hasRemove)
+        if (!hasTitle && !hasDescription && !hasDueDate && !hasTotalMarks && !hasAdd && !hasRemove)
             return res.status(400).json({
                 success: false,
                 message: "Nothing to update"
@@ -314,12 +332,16 @@ export const updateAssignment = async (req, res) => {
 
         const updateQuery = {};
 
-        if (hasTitle || hasDescription) {
+        if (hasTitle || hasDescription || hasDueDate || hasTotalMarks) {
             updateQuery.$set = {};
             if (hasTitle)
                 updateQuery.$set.title = cleanTitle;
             if (hasDescription)
                 updateQuery.$set.description = cleanDescription;
+            if (hasDueDate) 
+                updateQuery.$set.dueDate = parsedDueDate;
+            if (hasTotalMarks) 
+                updateQuery.$set.totalMarks = parsedTotalMarks;
         }
 
         if (hasAdd)
@@ -346,7 +368,7 @@ export const updateAssignment = async (req, res) => {
             )
         }
 
-        const updatedAssignment = await Assignment.findById(id).select("title");
+        const updatedAssignment = await Assignment.findById(id);
 
         if (course.students?.length > 0) {
             try {
@@ -368,7 +390,7 @@ export const updateAssignment = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "Assignment updated successfully",
-            assignment:updateAssignment
+            assignment: updatedAssignment
         });
     } catch (error) {
         return res.status(500).json({
