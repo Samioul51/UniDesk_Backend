@@ -21,19 +21,24 @@ const announcementSchema = new Schema({
         ref: "User",
         required: true
     },
-    attachments:[{
-        name:{
-            type:String
+    attachments: [{
+        name: {
+            type: String
         },
-        url:{
-            type:String
+        url: {
+            type: String
         },
-        cloudinaryId:{
-            type:String
+        cloudinaryId: {
+            type: String
+        },
+        resourceType: {
+            type: String,
+            enum: ["image", "video", "raw"],
+            default: "raw"
         }
     }]
-},{
-    timestamps:true
+}, {
+    timestamps: true
 });
 
 export const Announcement = mongoose.model("Announcement", announcementSchema);

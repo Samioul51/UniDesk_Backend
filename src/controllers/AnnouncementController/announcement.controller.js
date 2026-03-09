@@ -169,7 +169,7 @@ export const updateAnnouncement = async (req, res) => {
             );
 
             await Promise.all(
-                removedFiles.filter(file => file.cloudinaryId).map(file => deleteFromCloudinary(file.cloudinaryId).catch((error) => {
+                removedFiles.filter(file => file.cloudinaryId).map(file => deleteFromCloudinary(file.cloudinaryId, file.resourceType || "raw").catch((error) => {
                     console.error("Cloudinary deletion failed:", error.message)
                 }))
             )
@@ -268,8 +268,8 @@ export const deleteAnnouncement = async (req, res) => {
                 announcement.attachments
                     .filter(file => file.cloudinaryId)
                     .map(file =>
-                        deleteFromCloudinary(file.cloudinaryId)
-                            .catch(err =>
+                        deleteFromCloudinary(file.cloudinaryId, file.resourceType || "raw")
+                            .catch(error =>
                                 console.error("Cloudinary deletion failed:", error.message)
                             )
                     )
