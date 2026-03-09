@@ -33,9 +33,14 @@ const repositorySchema = new Schema({
         type: String,
         required: true
     },
-    cloudinaryId:{
-        type:String,
-        required:true
+    cloudinaryId: {
+        type: String,
+        required: true
+    },
+    resourceType: {
+        type: String,
+        enum: ["image", "video", "raw"],
+        default: "raw"
     },
     uploader: {
         type: Schema.Types.ObjectId,
@@ -66,12 +71,12 @@ const repositorySchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: "User"
     },
-    approvedAt:{
-        type:Date
+    approvedAt: {
+        type: Date
     }
 
 }, {
     timestamps: true
 });
 
-export const Repository = mongoose.model("repository", repositorySchema,"repository");
+export const Repository = mongoose.model("repository", repositorySchema, "repository");
