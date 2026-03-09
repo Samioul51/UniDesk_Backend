@@ -313,10 +313,18 @@ export const deleteItem = async (req, res) => {
 
         const item = await Repository.findById(id);
 
+        const user = req.dbUser;
+
         if (!item)
             return res.status(404).json({
                 success: false,
                 message: "Item not found"
+            });
+
+        if (user.role !== "admin" && (item.uploader.toString() !== user._id.toString()))
+            return res.status(403).json({
+                success: false,
+                message: "You can delete only your items"
             });
 
         try {
