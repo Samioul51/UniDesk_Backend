@@ -5,6 +5,7 @@ import { notifyUsers } from "../../utils/NotificationEngine/notificationService.
 import { deleteFromCloudinary } from "../../utils/DeleteFromCloudinary/deleteFromCloudinary.js";
 import { Submission } from "../../models/AssignmentSubmissionModel/submission.model.js";
 import { validateAttachments } from "../../utils/CloudinaryValidation/cloudinaryValidation.js";
+import { toMinuteTime } from "../../utils/ToMinuteTime/toMinuteTime.js";
 
 // Course wise assignments
 
@@ -124,7 +125,7 @@ export const uploadAssignment = async (req, res) => {
         return res.status(201).json({
             success: true,
             message: "Assignment uploaded successfully",
-            assignment:createdAssignment
+            assignment: createdAssignment
         });
     } catch (error) {
         return res.status(500).json({
@@ -319,7 +320,7 @@ export const updateAssignment = async (req, res) => {
 
         const hasTitle = cleanTitle && cleanTitle !== assignment.title;
         const hasDescription = cleanDescription && cleanDescription !== assignment.description;
-        const hasDueDate = parsedDueDate && parsedDueDate.getTime() !== new Date(assignment.dueDate).getTime();
+        const hasDueDate = parsedDueDate && toMinuteTime(parsedDueDate) !== toMinuteTime(assignment.dueDate);
         const hasTotalMarks = parsedTotalMarks && parsedTotalMarks !== assignment.totalMarks;
         const hasAdd = Array.isArray(addAttachments) && addAttachments.length > 0;
         const hasRemove = Array.isArray(removeAttachments) && removeAttachments.length > 0;
@@ -338,9 +339,9 @@ export const updateAssignment = async (req, res) => {
                 updateQuery.$set.title = cleanTitle;
             if (hasDescription)
                 updateQuery.$set.description = cleanDescription;
-            if (hasDueDate) 
+            if (hasDueDate)
                 updateQuery.$set.dueDate = parsedDueDate;
-            if (hasTotalMarks) 
+            if (hasTotalMarks)
                 updateQuery.$set.totalMarks = parsedTotalMarks;
         }
 
@@ -468,7 +469,7 @@ export const submitAssignment = async (req, res) => {
                 message: "You have already submitted this assignment"
             });
 
-        const submission=await Submission.create({
+        const submission = await Submission.create({
             assignment: id,
             course: assignment.course,
             student: student._id,
