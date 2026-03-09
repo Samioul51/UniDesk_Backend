@@ -23,7 +23,7 @@ export const itemUpload = async (req, res) => {
         if (!validateFileResourceType(resourceType))
             return res.status(400).json({
                 success: false,
-                message: "Invalid resourceType"
+                message: "Invalid resource type"
             });
 
         const item = await Repository.create({

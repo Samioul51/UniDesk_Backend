@@ -3,13 +3,14 @@ import { Course } from "../../models/CourseModel/course.model.js";
 import { Material } from "../../models/StudyMaterialModel/material.model.js";
 import { notifyUsers } from "../../utils/NotificationEngine/notificationService.js";
 import { deleteFromCloudinary } from "../../utils/DeleteFromCloudinary/deleteFromCloudinary.js";
+import { validateFileResourceType } from "../../utils/CloudinaryValidation/cloudinaryValidation.js";
 
 // Upload material
 
 export const uploadMaterial = async (req, res) => {
     try {
         const id = req.params.id;
-        const { title, description, url, cloudinaryId } = req.body;
+        const { title, description, url, cloudinaryId, resourceType } = req.body;
 
         const faculty = req.dbUser;
 
@@ -29,10 +30,16 @@ export const uploadMaterial = async (req, res) => {
                 message: "You are not teaching this course"
             });
 
-        if (!title || !description || !url || !cloudinaryId)
+        if (!title || !description || !url || !cloudinaryId || !resourceType)
             return res.status(400).json({
                 success: false,
                 message: "Title, Description and URL required"
+            });
+
+        if(!validateFileResourceType(resourceType))
+            return res.status(400).json({
+                success: false,
+                message: "Invalid resource type"
             });
 
         const material = await Material.create({
@@ -41,6 +48,7 @@ export const uploadMaterial = async (req, res) => {
             description,
             url,
             cloudinaryId,
+            resourceType,
             uploader: faculty._id
         });
 
@@ -56,7 +64,7 @@ export const uploadMaterial = async (req, res) => {
                     entityModel: "Material",
                     redirectURL: `/materials/${material._id}`
                 });
-            }catch(error){
+            } catch (error) {
                 console.error(error.message);
             }
         }
@@ -67,9 +75,9 @@ export const uploadMaterial = async (req, res) => {
             material
         });
     } catch (error) {
-        return res.status(500).json({ 
-            success:false,
-            message: error.message 
+        return res.status(500).json({
+            success: false,
+            message: error.message
         });
     }
 };
@@ -141,9 +149,9 @@ export const deleteMaterial = async (req, res) => {
                 message: "You are not authorized to delete this course material"
             });
 
-        try{
-            await deleteFromCloudinary(material.cloudinaryId);
-        }catch(error){
+        try {
+            await deleteFromCloudinary(material.cloudinaryId,material.resourceType || "raw");
+        } catch (error) {
             console.error("Material deletion from cloud error");
         }
 
@@ -155,9 +163,9 @@ export const deleteMaterial = async (req, res) => {
         });
 
     } catch (error) {
-        res.status(500).json({ 
-            success:false,
-            message: error.message 
+        res.status(500).json({
+            success: false,
+            message: error.message
         });
     }
 };
