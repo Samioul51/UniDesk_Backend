@@ -113,7 +113,10 @@ export const courseMaterials = async (req, res) => {
             materials
         })
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
+        });
     }
 };
 
@@ -163,7 +166,7 @@ export const deleteMaterial = async (req, res) => {
         });
 
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: error.message
         });

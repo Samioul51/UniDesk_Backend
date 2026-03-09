@@ -54,8 +54,9 @@ export const scheduleCreation = async (req, res) => {
             message: "Schedule created successfully"
         });
     } catch (error) {
-        return res.status(500).json({
-            message: error.message
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
         });
     }
 };
@@ -93,8 +94,9 @@ export const facultySchedule = async (req, res) => {
             schedule
         });
     } catch (error) {
-        return res.status(500).json({
-            message: error.message
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
         });
     }
 };
@@ -164,8 +166,9 @@ export const updateSchedule = async (req, res) => {
             schedule: existingSchedule
         });
     } catch (error) {
-        return res.status(500).json({
-            message: error.message
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
         });
     }
 };

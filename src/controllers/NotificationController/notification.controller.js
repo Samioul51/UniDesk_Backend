@@ -13,8 +13,9 @@ export const getNotifications = async (req, res) => {
             notifications
         });
     } catch (error) {
-        return res.status(500).json({
-            message: error.message
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
         });
     }
 };
@@ -35,8 +36,9 @@ export const getUnreadCount = async (req, res) => {
             unreadCount: count
         });
     } catch (error) {
-        return res.status(500).json({
-            message: error.message
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
         });
     }
 };
@@ -69,8 +71,9 @@ export const markOneAsRead = async (req, res) => {
             message:"Notification marked as read"
         });
     } catch (error) {
-        return res.status(500).json({
-            message: error.message
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
         });
     }
 };
@@ -98,8 +101,9 @@ export const markAllAsRead = async (req, res) => {
             message:"All notifications marked as read"
         });
     } catch (error) {
-        return res.status(500).json({
-            message: error.message
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
         });
     }
 };

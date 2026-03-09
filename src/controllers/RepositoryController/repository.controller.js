@@ -43,15 +43,19 @@ export const itemUpload = async (req, res) => {
         const admins = await User.find({ role: "admin" }).select("_id");
 
         if (admins.length > 0) {
-            await notifyUsers({
-                receivers: admins.map(a => a._id),
-                sender: uploader,
-                type: notificationTypes.contributionPending,
-                title: "New Contribution Pending",
-                message: "A new repository item needs review.",
-                entityModel: "Repository",
-                redirectURL: "/admin/repository"
-            });
+            try {
+                await notifyUsers({
+                    receivers: admins.map(a => a._id),
+                    sender: uploader,
+                    type: notificationTypes.contributionPending,
+                    title: "New Contribution Pending",
+                    message: "A new repository item needs review.",
+                    entityModel: "Repository",
+                    redirectURL: "/admin/repository"
+                });
+            } catch (error) {
+                console.error(error.message);
+            }
         }
 
         return res.status(201).json({
@@ -61,6 +65,7 @@ export const itemUpload = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -103,6 +108,7 @@ export const getItems = async (req, res) => {
         })
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -136,6 +142,7 @@ export const getSingleItem = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -217,33 +224,40 @@ export const itemStatusUpdate = async (req, res) => {
             );
         }
 
-
         const updatedItem = await Repository.findById(id);
 
         if (status === "approved") {
-            await notifyUsers({
-                receivers: [updatedItem.uploader],
-                sender: admin._id,
-                type: notificationTypes.contributionApproved,
-                title: "Contribution Approved",
-                message: "Your uploaded item has been approved.",
-                entityID: updatedItem._id,
-                entityModel: "Repository",
-                redirectURL: `/repository/${updatedItem._id}`
-            });
+            try {
+                await notifyUsers({
+                    receivers: [updatedItem.uploader],
+                    sender: admin._id,
+                    type: notificationTypes.contributionApproved,
+                    title: "Contribution Approved",
+                    message: "Your uploaded item has been approved.",
+                    entityID: updatedItem._id,
+                    entityModel: "Repository",
+                    redirectURL: `/repository/${updatedItem._id}`
+                });
+            } catch (error) {
+                console.error(error.message);
+            }
         }
 
         if (status === "rejected") {
-            await notifyUsers({
-                receivers: [updatedItem.uploader],
-                sender: admin._id,
-                type: notificationTypes.contributionRejected,
-                title: "Contribution Rejected",
-                message: "Your uploaded item was rejected.",
-                entityID: updatedItem._id,
-                entityModel: "Repository",
-                redirectURL: `/repository/${updatedItem._id}`
-            });
+            try {
+                await notifyUsers({
+                    receivers: [updatedItem.uploader],
+                    sender: admin._id,
+                    type: notificationTypes.contributionRejected,
+                    title: "Contribution Rejected",
+                    message: "Your uploaded item was rejected.",
+                    entityID: updatedItem._id,
+                    entityModel: "Repository",
+                    redirectURL: `/repository/${updatedItem._id}`
+                });
+            } catch (error) {
+                console.error(error.message);
+            }
         }
 
         return res.status(200).json({
@@ -253,6 +267,7 @@ export const itemStatusUpdate = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -300,6 +315,7 @@ export const getLeaderboard = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -342,6 +358,7 @@ export const deleteItem = async (req, res) => {
 
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }

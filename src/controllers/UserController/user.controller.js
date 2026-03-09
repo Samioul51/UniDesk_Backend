@@ -291,8 +291,9 @@ export const createUser = async (req, res) => {
         });
     }
     catch (error) {
-        return res.status(500).json({
-            message: error.message
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
         });
     }
 };
@@ -340,8 +341,9 @@ export const getUsers = async (req, res) => {
         });
     }
     catch (error) {
-        return res.status(500).json({
-            message: error.message
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
         });
     }
 };
@@ -371,8 +373,9 @@ export const getSingleUser = async (req, res) => {
             user
         });
     } catch (error) {
-        return res.status(500).json({
-            message: error.message
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
         });
     }
 };
@@ -453,8 +456,9 @@ export const updateProfile = async (req, res) => {
             message: "Profile updated successfully"
         });
     } catch (error) {
-        return res.status(500).json({
-            message: error.message
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
         });
     }
 };
@@ -550,8 +554,9 @@ export const adminUpdateProfile = async (req, res) => {
             user: updatedUser
         });
     } catch (error) {
-        return res.status(500).json({
-            message: error.message
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
         });
     }
 };
@@ -591,8 +596,9 @@ export const adminDeleteUser = async (req, res) => {
             message: "User permanently deleted"
         });
     } catch (error) {
-        return res.status(500).json({
-            message: error.message
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
         });
     }
 };

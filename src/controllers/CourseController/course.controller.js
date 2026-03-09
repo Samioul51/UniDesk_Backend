@@ -50,7 +50,10 @@ export const createCourse = async (req, res) => {
             return res.status(409).json({
                 message: "Course already exists for this session"
             });
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
+        });
     }
 };
 
@@ -108,7 +111,10 @@ export const studentJoinCourseByInvitation = async (req, res) => {
         })
 
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
+        });
     }
 };
 
@@ -150,7 +156,10 @@ export const studentLeaveCourse = async (req, res) => {
             message: "Left course successfully"
         })
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
+        });
     }
 };
 
@@ -214,7 +223,10 @@ export const facultyJoinCourseByInvitation = async (req, res) => {
         })
 
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
+        });
     }
 };
 
@@ -268,7 +280,10 @@ export const facultyLeaveCourse = async (req, res) => {
             message: "Left course successfully"
         })
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
+        });
     }
 };
 
@@ -324,7 +339,10 @@ export const removeStudentFromCourse = async (req, res) => {
             message: "Student removed from course successfully"
         });
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
+        });
     }
 };
 
@@ -343,7 +361,10 @@ export const adminAllCourses = async (req, res) => {
             courses
         });
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
+        });
     }
 };
 
@@ -381,7 +402,10 @@ export const singleCourse = async (req, res) => {
             course
         });
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
+        });
     }
 };
 
@@ -470,7 +494,10 @@ export const getMyCourses = async (req, res) => {
             }
         });
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
+        });
     }
 };
 
@@ -575,6 +602,9 @@ export const updateCourse = async (req, res) => {
             })
         });
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
+        });
     }
 };

@@ -86,7 +86,10 @@ export const createAnnouncement = async (req, res) => {
         });
 
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
@@ -195,16 +198,21 @@ export const updateAnnouncement = async (req, res) => {
         const updatedAnnouncement = await Announcement.findById(announcementID).select("title");
 
         if (course.students?.length > 0) {
-            await notifyUsers({
-                receivers: course.students,
-                sender: user._id,
-                type: notificationTypes.announcementUpdate,
-                title: "Announcement Updated",
-                message: `${updatedAnnouncement.title} has been updated.`,
-                entityID: announcementID,
-                entityModel: "Announcement",
-                redirectURL: `/announcements/${announcementID}`
-            });
+            try {
+                await notifyUsers({
+                    receivers: course.students,
+                    sender: user._id,
+                    type: notificationTypes.announcementUpdate,
+                    title: "Announcement Updated",
+                    message: `${updatedAnnouncement.title} has been updated.`,
+                    entityID: announcementID,
+                    entityModel: "Announcement",
+                    redirectURL: `/announcements/${announcementID}`
+                });
+            } catch (error) {
+                console.error(error.message);
+            }
+
         }
 
         return res.status(200).json({
@@ -212,7 +220,10 @@ export const updateAnnouncement = async (req, res) => {
             message: "Announcement updated successfully"
         });
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
@@ -254,7 +265,10 @@ export const getCourseAnnouncements = async (req, res) => {
         });
 
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
@@ -300,6 +314,9 @@ export const deleteAnnouncement = async (req, res) => {
             message: "Announcement deleted successfully"
         });
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };

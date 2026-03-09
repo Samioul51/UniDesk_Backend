@@ -39,6 +39,7 @@ export const courseAssignments = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -105,16 +106,20 @@ export const uploadAssignment = async (req, res) => {
 
         const createdAssignment = await Assignment.create(assignment);
 
-        await notifyUsers({
-            receivers: course.students,
-            sender: faculty._id,
-            type: notificationTypes.newAssignment,
-            title: "New Assignment Posted",
-            message: `${createdAssignment.title} has been posted.`,
-            entityID: createdAssignment._id,
-            entityModel: "Assignment",
-            redirectURL: `/assignments/${createdAssignment._id}`
-        });
+        try {
+            await notifyUsers({
+                receivers: course.students,
+                sender: faculty._id,
+                type: notificationTypes.newAssignment,
+                title: "New Assignment Posted",
+                message: `${createdAssignment.title} has been posted.`,
+                entityID: createdAssignment._id,
+                entityModel: "Assignment",
+                redirectURL: `/assignments/${createdAssignment._id}`
+            });
+        } catch (error) {
+            console.error(error.message);
+        }
 
         return res.status(201).json({
             success: true,
@@ -122,6 +127,7 @@ export const uploadAssignment = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -181,6 +187,7 @@ export const getAssignment = async (req, res) => {
         })
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -238,7 +245,10 @@ export const deleteAssignment = async (req, res) => {
         });
 
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
@@ -338,16 +348,20 @@ export const updateAssignment = async (req, res) => {
         const updatedAssignment = await Assignment.findById(id).select("title");
 
         if (course.students?.length > 0) {
-            await notifyUsers({
-                receivers: course.students,
-                sender: faculty._id,
-                type: notificationTypes.assignmentUpdate,
-                title: "Assignment Updated",
-                message: `Assignment "${updatedAssignment.title}" has been updated.`,
-                entityID: updatedAssignment._id,
-                entityModel: "Assignment",
-                redirectURL: `/assignments/${updatedAssignment._id}`
-            });
+            try {
+                await notifyUsers({
+                    receivers: course.students,
+                    sender: faculty._id,
+                    type: notificationTypes.assignmentUpdate,
+                    title: "Assignment Updated",
+                    message: `Assignment "${updatedAssignment.title}" has been updated.`,
+                    entityID: updatedAssignment._id,
+                    entityModel: "Assignment",
+                    redirectURL: `/assignments/${updatedAssignment._id}`
+                });
+            } catch (error) {
+                console.error(error.message);
+            }
         }
 
         return res.status(200).json({
@@ -355,7 +369,10 @@ export const updateAssignment = async (req, res) => {
             message: "Assignment updated successfully"
         });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
@@ -441,7 +458,10 @@ export const submitAssignment = async (req, res) => {
             message: "Assignment submitted successfully"
         });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
@@ -490,7 +510,10 @@ export const getAssignmentSubmissions = async (req, res) => {
         });
 
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
@@ -565,16 +588,20 @@ export const gradeSubmission = async (req, res) => {
 
         await submission.save();
 
-        await notifyUsers({
-            receivers: [submission.student],
-            sender: faculty._id,
-            type: notificationTypes.gradePublished,
-            title: "Marks Published",
-            message: `Your submission for "${assignment.title}" has been graded.`,
-            entityID: assignment._id,
-            entityModel: "Assignment",
-            redirectURL: `/assignments/${assignment._id}`
-        });
+        try {
+            await notifyUsers({
+                receivers: [submission.student],
+                sender: faculty._id,
+                type: notificationTypes.gradePublished,
+                title: "Marks Published",
+                message: `Your submission for "${assignment.title}" has been graded.`,
+                entityID: assignment._id,
+                entityModel: "Assignment",
+                redirectURL: `/assignments/${assignment._id}`
+            });
+        } catch (error) {
+            console.error(error.message);
+        }
 
         return res.status(200).json({
             success: true,
@@ -583,6 +610,7 @@ export const gradeSubmission = async (req, res) => {
 
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -664,6 +692,7 @@ export const unsubmitAssignment = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -712,6 +741,7 @@ export const requestRecheckSubmission = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -790,6 +820,7 @@ export const resolveRecheckSubmission = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -867,6 +898,7 @@ export const getPendingGrading = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
