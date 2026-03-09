@@ -24,6 +24,11 @@ const submissionSchema = new Schema({
         type: String,
         required: true
     },
+    resourceType: {
+        type: String,
+        enum: ["image", "video", "raw"],
+        default: "raw"
+    },
     submittedAt: {
         type: Date,
         default: Date.now
@@ -55,8 +60,8 @@ const submissionSchema = new Schema({
         type: Boolean,
         default: false
     },
-    recheckFeedback:{
-        type:String
+    recheckFeedback: {
+        type: String
     }
 });
 

@@ -28,6 +28,11 @@ const assignmentSchema = new Schema({
         },
         cloudinaryId: {
             type: String
+        },
+        resourceType: {
+            type: String,
+            enum: ["image", "video", "raw"],
+            default: "raw"
         }
     }],
     createdBy: {
@@ -39,8 +44,8 @@ const assignmentSchema = new Schema({
         type: Boolean,
         default: false
     }
-},{
-    timestamps:true
+}, {
+    timestamps: true
 });
 
 export const Assignment = mongoose.model("Assignment", assignmentSchema);
