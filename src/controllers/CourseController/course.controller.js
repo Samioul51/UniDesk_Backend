@@ -105,10 +105,13 @@ export const studentJoinCourseByInvitation = async (req, res) => {
             { $addToSet: { students: userId } }
         );
 
+        const updatedCourse=await Course.findById(course._id)
+
         return res.status(200).json({
             success: true,
-            message: "Joined course successfully"
-        })
+            message: "Joined course successfully",
+            course:updatedCourse
+        });
 
     } catch (error) {
         return res.status(500).json({ 
@@ -217,10 +220,13 @@ export const facultyJoinCourseByInvitation = async (req, res) => {
             { $addToSet: { faculties: userId } }
         );
 
+        const updatedCourse=await Course.findById(course._id);
+
         return res.status(200).json({
             success: true,
-            message: "Joined course successfully"
-        })
+            message: "Joined course successfully",
+            course:updatedCourse
+        });
 
     } catch (error) {
         return res.status(500).json({ 
@@ -334,9 +340,12 @@ export const removeStudentFromCourse = async (req, res) => {
             { $pull: { students: studentId } }
         );
 
+        const updatedCourse=await Course.findById(course._id);
+
         return res.status(200).json({
             success: true,
-            message: "Student removed from course successfully"
+            message: "Student removed from course successfully",
+            course:updatedCourse
         });
     } catch (error) {
         return res.status(500).json({ 
@@ -594,9 +603,12 @@ export const updateCourse = async (req, res) => {
                 message: "Course not found"
             });
 
+        const updatedCourse=await Course.findById(course._id);
+
         return res.status(200).json({
             success: true,
             message: "Course updated successfully",
+            course:updatedCourse,
             ...(updatedFields.invitationCode && {
                 newInvitationLink: `${process.env.LIVE_LINK}/join-course?code=${updatedFields.invitationCode}`
             })

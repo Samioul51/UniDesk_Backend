@@ -217,7 +217,8 @@ export const updateAnnouncement = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Announcement updated successfully"
+            message: "Announcement updated successfully",
+            announcement:updatedAnnouncement
         });
     } catch (error) {
         return res.status(500).json({

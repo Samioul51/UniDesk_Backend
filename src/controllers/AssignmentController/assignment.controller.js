@@ -123,7 +123,8 @@ export const uploadAssignment = async (req, res) => {
 
         return res.status(201).json({
             success: true,
-            message: "Assignment uploaded successfully"
+            message: "Assignment uploaded successfully",
+            assignment:createdAssignment
         });
     } catch (error) {
         return res.status(500).json({
@@ -366,7 +367,8 @@ export const updateAssignment = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Assignment updated successfully"
+            message: "Assignment updated successfully",
+            assignment:updateAssignment
         });
     } catch (error) {
         return res.status(500).json({
@@ -444,7 +446,7 @@ export const submitAssignment = async (req, res) => {
                 message: "You have already submitted this assignment"
             });
 
-        await Submission.create({
+        const submission=await Submission.create({
             assignment: id,
             course: assignment.course,
             student: student._id,
@@ -455,7 +457,8 @@ export const submitAssignment = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Assignment submitted successfully"
+            message: "Assignment submitted successfully",
+            submission
         });
     } catch (error) {
         return res.status(500).json({
@@ -605,7 +608,8 @@ export const gradeSubmission = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Submission graded successfully"
+            message: "Submission graded successfully",
+            submission
         });
 
     } catch (error) {
@@ -737,7 +741,8 @@ export const requestRecheckSubmission = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Recheck request submitted successfully"
+            message: "Recheck request submitted successfully",
+            submission
         });
     } catch (error) {
         return res.status(500).json({
@@ -816,7 +821,8 @@ export const resolveRecheckSubmission = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Recheck resolved successfully"
+            message: "Recheck resolved successfully",
+            submission
         });
     } catch (error) {
         return res.status(500).json({
