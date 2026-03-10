@@ -117,6 +117,7 @@ export const getSupervises = async (req, res) => {
         const skip = (page - 1) * limit;
 
         const search = req.query.search?.trim().toLowerCase();
+        const relationshipType = req.query.relationshipType?.trim().toLowerCase();
 
         const supervisor = await User.findById(supervisorID);
 
@@ -185,8 +186,13 @@ export const getSupervises = async (req, res) => {
 
         let filteredResult = result;
 
+         if (relationshipType) 
+            filteredResult = filteredResult.filter(
+                item => item.relationshipType.toLowerCase() === relationshipType
+            );
+
         if (search) 
-            filteredResult = result.filter(item =>
+            filteredResult = filteredResult.filter(item =>
                 item.student?.name?.toLowerCase().includes(search) || item.topic?.toLowerCase().includes(search) || item.relationshipType?.toLowerCase().includes(search) || item.status?.toLowerCase().includes(search)
             );
 
@@ -198,6 +204,7 @@ export const getSupervises = async (req, res) => {
         return res.status(200).json({
             success: true,
             search: !!search,
+            relationshipType: relationshipType || null,
             activeSupervises,
             completedSupervises,
             completedPagination: {

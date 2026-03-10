@@ -205,13 +205,32 @@ export const getFacultyAppointments = async (req, res) => {
                 success: false,
                 message: "You can see your own appointments"
             });
+        
+        const page = parseInt(req.query.page) || 1;
+        const limit = 10;
+        const skip = (page - 1) * limit;
 
-        const appointments = await Appointment.find({ faculty: faculty._id }).sort({ startTime: -1 }).populate("student", "name email");
+        const status = req.query.status;
+
+        const filter = {
+            faculty: faculty._id
+        };
+
+        if (status)
+            filter.status = status;
+
+        const appointments = await Appointment.find(filter).sort({ startTime: -1 }).skip(skip).limit(limit).populate("student", "name email");
+
+        const totalAppointments = await Appointment.countDocuments(filter);
 
         return res.status(200).json({
             success: true,
-            count: appointments.length,
-            appointments
+            appointments,
+            pagination: {
+                page,
+                totalPages: Math.ceil(totalAppointments / limit),
+                totalAppointments
+            }
         });
 
     } catch (error) {
