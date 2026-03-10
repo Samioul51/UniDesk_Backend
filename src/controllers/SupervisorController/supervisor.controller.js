@@ -139,7 +139,7 @@ export const getSupervises = async (req, res) => {
                 message: "You are not authorized to see this Faculty's supervises"
             });
 
-        const supervisorDoc = await Supervisor.findOne({ supervisor: supervisorID }).populate("supervises.student", "name email");
+        const supervisorDoc = await Supervisor.findOne({ supervisor: supervisorID }).populate("supervises.student", "name email photoURL");
 
         if (!supervisorDoc)
             return res.status(200).json({
@@ -249,7 +249,7 @@ export const getSupervisors = async (req, res) => {
                 message: "You are not authorized to see this student's supervisors"
             });
 
-        const supervisorDocs = await Supervisor.find({ "supervises.student": studentID }).populate("supervisor", "name email");
+        const supervisorDocs = await Supervisor.find({ "supervises.student": studentID }).populate("supervisor", "name email photoURL");
 
         if (!supervisorDocs.length)
             return res.status(200).json({
