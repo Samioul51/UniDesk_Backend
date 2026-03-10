@@ -4,6 +4,8 @@ import { Course } from "../../models/CourseModel/course.model.js";
 import { notifyUsers } from "../../utils/NotificationEngine/notificationService.js";
 import { deleteFromCloudinary } from "../../utils/DeleteFromCloudinary/deleteFromCloudinary.js";
 import { Submission } from "../../models/AssignmentSubmissionModel/submission.model.js";
+import { validateAttachments } from "../../utils/CloudinaryValidation/cloudinaryValidation.js";
+import { toMinuteTime } from "../../utils/ToMinuteTime/toMinuteTime.js";
 
 // Course wise assignments
 
@@ -38,6 +40,7 @@ export const courseAssignments = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -84,8 +87,17 @@ export const uploadAssignment = async (req, res) => {
             createdBy: faculty._id
         };
 
-        if (Array.isArray(attachments) && attachments.length > 0)
-            assignment.attachments = attachments;
+        if (attachments !== undefined) {
+            if (!Array.isArray(attachments) || !validateAttachments(attachments)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Each attachment needs url, cloudinaryId and valid resourceType"
+                });
+            }
+
+            if (attachments.length > 0)
+                assignment.attachments = attachments;
+        }
 
         if (isNaN(new Date(dueDate)))
             return res.status(400).json({
@@ -95,23 +107,29 @@ export const uploadAssignment = async (req, res) => {
 
         const createdAssignment = await Assignment.create(assignment);
 
-        await notifyUsers({
-            receivers: course.students,
-            sender: faculty._id,
-            type: notificationTypes.newAssignment,
-            title: "New Assignment Posted",
-            message: `${createdAssignment.title} has been posted.`,
-            entityID: createdAssignment._id,
-            entityModel: "Assignment",
-            redirectURL: `/assignments/${createdAssignment._id}`
-        });
+        try {
+            await notifyUsers({
+                receivers: course.students,
+                sender: faculty._id,
+                type: notificationTypes.newAssignment,
+                title: "New Assignment Posted",
+                message: `${createdAssignment.title} has been posted.`,
+                entityID: createdAssignment._id,
+                entityModel: "Assignment",
+                redirectURL: `/assignments/${createdAssignment._id}`
+            });
+        } catch (error) {
+            console.error(error.message);
+        }
 
         return res.status(201).json({
             success: true,
-            message: "Assignment uploaded successfully"
+            message: "Assignment uploaded successfully",
+            assignment: createdAssignment
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -171,6 +189,7 @@ export const getAssignment = async (req, res) => {
         })
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -212,7 +231,7 @@ export const deleteAssignment = async (req, res) => {
 
         if (assignment.attachments?.length) {
             await Promise.all(
-                assignment.attachments.filter(file => file.cloudinaryId).map(file => deleteFromCloudinary(file.cloudinaryId).catch((error) => {
+                assignment.attachments.filter(file => file.cloudinaryId).map(file => deleteFromCloudinary(file.cloudinaryId, file.resourceType || "raw").catch((error) => {
                     console.error("Cloudinary deletion failed:", error.message)
                 }))
             )
@@ -228,7 +247,10 @@ export const deleteAssignment = async (req, res) => {
         });
 
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
@@ -237,7 +259,16 @@ export const deleteAssignment = async (req, res) => {
 export const updateAssignment = async (req, res) => {
     try {
         const id = req.params.id;
-        const { title, description, addAttachments, removeAttachments } = req.body;
+        const { title, description, dueDate, totalMarks, addAttachments, removeAttachments } = req.body;
+
+        if (addAttachments !== undefined) {
+            if (!Array.isArray(addAttachments) || !validateAttachments(addAttachments)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Each new attachment needs url, cloudinaryId and valid resourceType"
+                });
+            }
+        }
 
         const faculty = req.dbUser;
 
@@ -271,12 +302,30 @@ export const updateAssignment = async (req, res) => {
 
         const cleanDescription = typeof description === "string" ? description.trim() : null;
 
+        const parsedDueDate = (dueDate !== undefined && dueDate !== null && dueDate !== "") ? new Date(dueDate) : null;
+
+        if (dueDate !== undefined && (Number.isNaN(parsedDueDate?.getTime?.())))
+            return res.status(400).json({
+                success: false,
+                message: "Invalid due date"
+            });
+
+        const parsedTotalMarks = (totalMarks !== undefined && totalMarks !== null && totalMarks !== "") ? Number(totalMarks) : null;
+
+        if (totalMarks !== undefined && (!Number.isFinite(parsedTotalMarks) || parsedTotalMarks <= 0))
+            return res.status(400).json({
+                success: false,
+                message: "totalMarks must be greater than 0"
+            });
+
         const hasTitle = cleanTitle && cleanTitle !== assignment.title;
         const hasDescription = cleanDescription && cleanDescription !== assignment.description;
+        const hasDueDate = parsedDueDate && toMinuteTime(parsedDueDate) !== toMinuteTime(assignment.dueDate);
+        const hasTotalMarks = parsedTotalMarks && parsedTotalMarks !== assignment.totalMarks;
         const hasAdd = Array.isArray(addAttachments) && addAttachments.length > 0;
         const hasRemove = Array.isArray(removeAttachments) && removeAttachments.length > 0;
 
-        if (!hasTitle && !hasDescription && !hasAdd && !hasRemove)
+        if (!hasTitle && !hasDescription && !hasDueDate && !hasTotalMarks && !hasAdd && !hasRemove)
             return res.status(400).json({
                 success: false,
                 message: "Nothing to update"
@@ -284,12 +333,16 @@ export const updateAssignment = async (req, res) => {
 
         const updateQuery = {};
 
-        if (hasTitle || hasDescription) {
+        if (hasTitle || hasDescription || hasDueDate || hasTotalMarks) {
             updateQuery.$set = {};
             if (hasTitle)
                 updateQuery.$set.title = cleanTitle;
             if (hasDescription)
                 updateQuery.$set.description = cleanDescription;
+            if (hasDueDate)
+                updateQuery.$set.dueDate = parsedDueDate;
+            if (hasTotalMarks)
+                updateQuery.$set.totalMarks = parsedTotalMarks;
         }
 
         if (hasAdd)
@@ -310,33 +363,41 @@ export const updateAssignment = async (req, res) => {
             );
 
             await Promise.all(
-                removedFiles.filter(file => file.cloudinaryId).map(file => deleteFromCloudinary(file.cloudinaryId).catch((error) => {
+                removedFiles.filter(file => file.cloudinaryId).map(file => deleteFromCloudinary(file.cloudinaryId, file.resourceType || "raw").catch((error) => {
                     console.error("Cloudinary deletion failed:", error.message)
                 }))
             )
         }
 
-        const updatedAssignment = await Assignment.findById(id).select("title");
+        const updatedAssignment = await Assignment.findById(id);
 
         if (course.students?.length > 0) {
-            await notifyUsers({
-                receivers: course.students,
-                sender: faculty._id,
-                type: notificationTypes.assignmentUpdate,
-                title: "Assignment Updated",
-                message: `Assignment "${updatedAssignment.title}" has been updated.`,
-                entityID: updatedAssignment._id,
-                entityModel: "Assignment",
-                redirectURL: `/assignments/${updatedAssignment._id}`
-            });
+            try {
+                await notifyUsers({
+                    receivers: course.students,
+                    sender: faculty._id,
+                    type: notificationTypes.assignmentUpdate,
+                    title: "Assignment Updated",
+                    message: `Assignment "${updatedAssignment.title}" has been updated.`,
+                    entityID: updatedAssignment._id,
+                    entityModel: "Assignment",
+                    redirectURL: `/assignments/${updatedAssignment._id}`
+                });
+            } catch (error) {
+                console.error(error.message);
+            }
         }
 
         return res.status(200).json({
             success: true,
-            message: "Assignment updated successfully"
+            message: "Assignment updated successfully",
+            assignment: updatedAssignment
         });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
@@ -374,12 +435,19 @@ export const submitAssignment = async (req, res) => {
                 message: "You are not an student of this course"
             });
 
-        const { submissionURL, cloudinaryId } = req.body;
+        const { submissionURL, cloudinaryId, resourceType } = req.body;
 
-        if (!submissionURL || !cloudinaryId)
+        if (!submissionURL || !cloudinaryId || !resourceType)
             return res.status(400).json({
                 success: false,
-                message: "Submission URL and cloudinaryId required"
+                message: "Submission URL,cloudinaryId and resource type required"
+            });
+
+        const allowedTypes = ["image", "video", "raw"];
+        if (!allowedTypes.includes(resourceType))
+            return res.status(400).json({
+                success: false,
+                message: "Invalid resource type"
             });
 
         const now = new Date();
@@ -401,20 +469,25 @@ export const submitAssignment = async (req, res) => {
                 message: "You have already submitted this assignment"
             });
 
-        await Submission.create({
+        const submission = await Submission.create({
             assignment: id,
             course: assignment.course,
             student: student._id,
             submissionURL,
-            cloudinaryId
+            cloudinaryId,
+            resourceType
         });
 
         return res.status(200).json({
             success: true,
-            message: "Assignment submitted successfully"
+            message: "Assignment submitted successfully",
+            submission
         });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
@@ -463,7 +536,10 @@ export const getAssignmentSubmissions = async (req, res) => {
         });
 
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
@@ -538,24 +614,30 @@ export const gradeSubmission = async (req, res) => {
 
         await submission.save();
 
-        await notifyUsers({
-            receivers: [submission.student],
-            sender: faculty._id,
-            type: notificationTypes.gradePublished,
-            title: "Marks Published",
-            message: `Your submission for "${assignment.title}" has been graded.`,
-            entityID: assignment._id,
-            entityModel: "Assignment",
-            redirectURL: `/assignments/${assignment._id}`
-        });
+        try {
+            await notifyUsers({
+                receivers: [submission.student],
+                sender: faculty._id,
+                type: notificationTypes.gradePublished,
+                title: "Marks Published",
+                message: `Your submission for "${assignment.title}" has been graded.`,
+                entityID: assignment._id,
+                entityModel: "Assignment",
+                redirectURL: `/assignments/${assignment._id}`
+            });
+        } catch (error) {
+            console.error(error.message);
+        }
 
         return res.status(200).json({
             success: true,
-            message: "Submission graded successfully"
+            message: "Submission graded successfully",
+            submission
         });
 
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -590,7 +672,7 @@ export const unsubmitAssignment = async (req, res) => {
                 success: false,
                 message: "Assignment not found"
             });
-        
+
         const course = await Course.findById(assignment.course);
 
         if (!course)
@@ -623,7 +705,7 @@ export const unsubmitAssignment = async (req, res) => {
 
         if (submission.cloudinaryId) {
             try {
-                await deleteFromCloudinary(submission.cloudinaryId);
+                await deleteFromCloudinary(submission.cloudinaryId, submission.resourceType || "raw");
             } catch (error) {
                 console.error("Cloudinary deletion failed:", error.message);
             }
@@ -637,6 +719,7 @@ export const unsubmitAssignment = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -681,10 +764,12 @@ export const requestRecheckSubmission = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Recheck request submitted successfully"
+            message: "Recheck request submitted successfully",
+            submission
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -759,10 +844,12 @@ export const resolveRecheckSubmission = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Recheck resolved successfully"
+            message: "Recheck resolved successfully",
+            submission
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -770,69 +857,69 @@ export const resolveRecheckSubmission = async (req, res) => {
 
 // Get all courses pending assignments
 
-export const getPendingGrading=async(req,res)=>{
+export const getPendingGrading = async (req, res) => {
     try {
-        const faculty=req.dbUser;
+        const faculty = req.dbUser;
 
-        const courses=await Course.find({
-            faculties:faculty._id,
-            status:"active"
+        const courses = await Course.find({
+            faculties: faculty._id,
+            status: "active"
         }).select("_id courseName courseCode");
 
-        if(!courses.length)
+        if (!courses.length)
             return res.status(200).json({
-                success:true,
-                assignments:[]
+                success: true,
+                assignments: []
             });
-            
-        const courseIDs=courses.map(c=>c._id);
 
-        const assignments=await Assignment.find({
-            course:{$in:courseIDs}
+        const courseIDs = courses.map(c => c._id);
+
+        const assignments = await Assignment.find({
+            course: { $in: courseIDs }
         }).select("_id title course dueDate totalMarks");
 
-        if(!assignments.length)
+        if (!assignments.length)
             return res.status(200).json({
-                success:true,
-                assignments:[]
+                success: true,
+                assignments: []
             });
 
-        const assignmentsIDs=assignments.map(c=>c._id);
+        const assignmentsIDs = assignments.map(c => c._id);
 
-        const pending=await Submission.aggregate([
+        const pending = await Submission.aggregate([
             {
-                $match:{
-                    assignment:{$in:assignmentsIDs},
-                    isGraded:false
+                $match: {
+                    assignment: { $in: assignmentsIDs },
+                    isGraded: false
                 }
             },
             {
-                $group:{
-                    _id:"$assignment",
-                    pendingGrading:{$sum:1}
+                $group: {
+                    _id: "$assignment",
+                    pendingGrading: { $sum: 1 }
                 }
             }
         ]);
 
-        const pendingMap={};
-        pending.forEach(p=>{
-            pendingMap[p._id.toString()]=p.pendingGrading;
+        const pendingMap = {};
+        pending.forEach(p => {
+            pendingMap[p._id.toString()] = p.pendingGrading;
         });
 
-        const result=assignments.map(a=>{
-            const course=courses.find(
-                c=>c._id.toString()===a.course.toString()
+        const result = assignments.map(a => {
+            const course = courses.find(
+                c => c._id.toString() === a.course.toString()
             );
 
             return {
-                title:a.title,
-                courseName:course?.courseName,
-                courseCode:course?.courseCode,
-                dueDate:a?.dueDate,
-                totalMarks:a?.totalMarks,
-                pendingGrading:pendingMap[a._id.toString()] || 0
+                title: a.title,
+                courseName: course?.courseName,
+                courseCode: course?.courseCode,
+                dueDate: a?.dueDate,
+                totalMarks: a?.totalMarks,
+                pendingGrading: pendingMap[a._id.toString()] || 0
             };
-        }).filter(a=>a.pendingGrading>0);
+        }).filter(a => a.pendingGrading > 0);
 
         return res.status(200).json({
             success: true,
@@ -840,6 +927,7 @@ export const getPendingGrading=async(req,res)=>{
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }

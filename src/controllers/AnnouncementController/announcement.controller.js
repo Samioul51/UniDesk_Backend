@@ -1,7 +1,8 @@
 import { notificationTypes } from "../../constants/notificationTypes.js";
 import { Announcement } from "../../models/AnnouncementModel/announcement.model.js";
 import { Course } from "../../models/CourseModel/course.model.js";
-import { User } from "../../models/UserModel/user.model.js";
+import { validateAttachments } from "../../utils/CloudinaryValidation/cloudinaryValidation.js";
+import { deleteFromCloudinary } from "../../utils/DeleteFromCloudinary/deleteFromCloudinary.js";
 import { notifyUsers } from "../../utils/NotificationEngine/notificationService.js";
 
 // Announcement creation
@@ -49,31 +50,46 @@ export const createAnnouncement = async (req, res) => {
             faculty: user._id,
         };
 
-        if (attachments)
+        if (attachments !== undefined) {
+            if (!Array.isArray(attachments) || !validateAttachments(attachments)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Each attachment needs url, cloudinaryId and valid resourceType"
+                });
+            }
             announcement.attachments = attachments;
+        }
 
         const result = await Announcement.create(announcement);
 
         if (courseExists.students.length > 0) {
-            await notifyUsers({
-                receivers: courseExists.students,
-                sender: user._id,
-                type: notificationTypes.newAnnouncement,
-                title: "New Announcement",
-                message: `${title}`,
-                entityID: result._id,
-                entityModel: "Announcement",
-                redirectURL: `/announcements/${result._id}`
-            });
+            try {
+                await notifyUsers({
+                    receivers: courseExists.students,
+                    sender: user._id,
+                    type: notificationTypes.newAnnouncement,
+                    title: "New Announcement",
+                    message: `${title}`,
+                    entityID: result._id,
+                    entityModel: "Announcement",
+                    redirectURL: `/announcements/${result._id}`
+                });
+            } catch (error) {
+                console.error(error.message);
+            }
         }
 
         return res.status(201).json({
             success: true,
-            message: "Announcement created successfully"
+            message: "Announcement created successfully",
+            announcement: result
         });
 
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
@@ -84,6 +100,15 @@ export const updateAnnouncement = async (req, res) => {
         const { courseID, announcementID } = req.params;
         const user = req.dbUser;
         const { title, description, addAttachments, removeAttachments } = req.body;
+
+        if (addAttachments !== undefined) {
+            if (!Array.isArray(addAttachments) || !validateAttachments(addAttachments)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Each new attachment needs url, cloudinaryId and valid resourceType"
+                });
+            }
+        }
 
         const announcement = await Announcement.findById(announcementID);
 
@@ -164,7 +189,7 @@ export const updateAnnouncement = async (req, res) => {
             );
 
             await Promise.all(
-                removedFiles.filter(file => file.cloudinaryId).map(file => deleteFromCloudinary(file.cloudinaryId).catch((error) => {
+                removedFiles.filter(file => file.cloudinaryId).map(file => deleteFromCloudinary(file.cloudinaryId, file.resourceType || "raw").catch((error) => {
                     console.error("Cloudinary deletion failed:", error.message)
                 }))
             )
@@ -173,24 +198,33 @@ export const updateAnnouncement = async (req, res) => {
         const updatedAnnouncement = await Announcement.findById(announcementID).select("title");
 
         if (course.students?.length > 0) {
-            await notifyUsers({
-                receivers: course.students,
-                sender: user._id,
-                type: notificationTypes.announcementUpdate,
-                title: "Announcement Updated",
-                message: `${updatedAnnouncement.title} has been updated.`,
-                entityID: announcementID,
-                entityModel: "Announcement",
-                redirectURL: `/announcements/${announcementID}`
-            });
+            try {
+                await notifyUsers({
+                    receivers: course.students,
+                    sender: user._id,
+                    type: notificationTypes.announcementUpdate,
+                    title: "Announcement Updated",
+                    message: `${updatedAnnouncement.title} has been updated.`,
+                    entityID: announcementID,
+                    entityModel: "Announcement",
+                    redirectURL: `/announcements/${announcementID}`
+                });
+            } catch (error) {
+                console.error(error.message);
+            }
+
         }
 
         return res.status(200).json({
             success: true,
-            message: "Announcement updated successfully"
+            message: "Announcement updated successfully",
+            announcement:updatedAnnouncement
         });
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
@@ -232,7 +266,10 @@ export const getCourseAnnouncements = async (req, res) => {
         });
 
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
@@ -263,8 +300,8 @@ export const deleteAnnouncement = async (req, res) => {
                 announcement.attachments
                     .filter(file => file.cloudinaryId)
                     .map(file =>
-                        deleteFromCloudinary(file.cloudinaryId)
-                            .catch(err =>
+                        deleteFromCloudinary(file.cloudinaryId, file.resourceType || "raw")
+                            .catch(error =>
                                 console.error("Cloudinary deletion failed:", error.message)
                             )
                     )
@@ -278,6 +315,9 @@ export const deleteAnnouncement = async (req, res) => {
             message: "Announcement deleted successfully"
         });
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };

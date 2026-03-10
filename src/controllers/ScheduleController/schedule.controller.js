@@ -51,11 +51,13 @@ export const scheduleCreation = async (req, res) => {
 
         return res.status(201).json({
             success: true,
-            message: "Schedule created successfully"
+            message: "Schedule created successfully",
+            schedule
         });
     } catch (error) {
-        return res.status(500).json({
-            message: error.message
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
         });
     }
 };
@@ -93,8 +95,9 @@ export const facultySchedule = async (req, res) => {
             schedule
         });
     } catch (error) {
-        return res.status(500).json({
-            message: error.message
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
         });
     }
 };
@@ -164,8 +167,9 @@ export const updateSchedule = async (req, res) => {
             schedule: existingSchedule
         });
     } catch (error) {
-        return res.status(500).json({
-            message: error.message
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
         });
     }
 };

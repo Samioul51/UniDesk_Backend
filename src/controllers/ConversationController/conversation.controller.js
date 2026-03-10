@@ -9,7 +9,7 @@ import { notifyUsers } from "../../utils/NotificationEngine/notificationService.
 
 export const createConversation = async (req, res) => {
     try {
-        const senderID=req.dbUser._id;
+        const senderID = req.dbUser._id;
         const { receiverID } = req.body;
 
         if (!receiverID)
@@ -32,9 +32,9 @@ export const createConversation = async (req, res) => {
                 message: "Receiver not found"
             });
 
-        const participants=[senderID,receiverID].sort();
+        const participants = [senderID, receiverID].sort();
 
-        let conversation = await Conversation.findOne({participants}).populate("participants", "name email");
+        let conversation = await Conversation.findOne({ participants }).populate("participants", "name email");
 
         if (conversation)
             return res.status(200).json({
@@ -43,7 +43,7 @@ export const createConversation = async (req, res) => {
                 conversation
             });
 
-        conversation = await Conversation.create({participants});
+        conversation = await Conversation.create({ participants });
 
         return res.status(201).json({
             success: true,
@@ -52,6 +52,7 @@ export const createConversation = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -65,7 +66,7 @@ export const getUserConversations = async (req, res) => {
 
         const user = req.dbUser;
 
-        if (id.toString()!==user._id.toString())
+        if (id.toString() !== user._id.toString())
             return res.status(403).json({
                 success: false,
                 message: "You are not authorized to get conversations"
@@ -80,6 +81,7 @@ export const getUserConversations = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -116,6 +118,7 @@ export const getConversation = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -127,7 +130,7 @@ export const getMessages = async (req, res) => {
     try {
         const id = req.params.conversationID;
 
-        const userID=req.dbUser._id;
+        const userID = req.dbUser._id;
 
         const { page = 1, limit = 10 } = req.query;
         const skip = (page - 1) * limit;
@@ -160,6 +163,7 @@ export const getMessages = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -171,7 +175,7 @@ export const sendMessage = async (req, res) => {
     try {
         const { conversationID, content } = req.body;
 
-        const senderID=req.dbUser._id;
+        const senderID = req.dbUser._id;
 
         if (!conversationID || !content)
             return res.status(400).json({
@@ -197,7 +201,7 @@ export const sendMessage = async (req, res) => {
                 message: "Unauthorized user"
             });
 
-        const sender=await User.findById(senderID).select("name");
+        const sender = await User.findById(senderID).select("name");
 
         const message = await Message.create({
             conversation: conversationID,
@@ -219,16 +223,20 @@ export const sendMessage = async (req, res) => {
 
         io.to(senderID.toString()).emit("newMessage", populatedMessage);
 
-        await notifyUsers({
-            receivers: [receiverID],
-            sender: senderID,
-            type: notificationTypes.newMessage,
-            title: "New Message",
-            message: `${sender.name} sent you a message`,
-            entityID: conversation._id,
-            entityModel: "Conversation",
-            redirectURL: `/chat/${conversation._id}`
-        });
+        try {
+            await notifyUsers({
+                receivers: [receiverID],
+                sender: senderID,
+                type: notificationTypes.newMessage,
+                title: "New Message",
+                message: `${sender.name} sent you a message`,
+                entityID: conversation._id,
+                entityModel: "Conversation",
+                redirectURL: `/chat/${conversation._id}`
+            });
+        } catch (error) {
+            console.error(error.message);
+        }
 
         return res.status(201).json({
             success: true,
@@ -238,6 +246,7 @@ export const sendMessage = async (req, res) => {
 
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -248,7 +257,7 @@ export const sendMessage = async (req, res) => {
 export const messageSeenStatus = async (req, res) => {
     try {
         const id = req.params.conversationID;
-        const userID  = req.dbUser._id;
+        const userID = req.dbUser._id;
 
         const conversation = await Conversation.findById(id);
 
@@ -294,6 +303,7 @@ export const messageSeenStatus = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }

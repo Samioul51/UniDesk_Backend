@@ -134,16 +134,20 @@ export const bookAppointment = async (req, res) => {
             meetingType
         });
 
-        await notifyUsers({
-            receivers: [facultyID],
-            sender: student._id,
-            type: notificationTypes.appointmentRequest,
-            title: "New Appointment Request",
-            message: `${student.name} requested a meeting.`,
-            entityID: appointment._id,
-            entityModel: "Appointment",
-            redirectURL: `/appointments/${appointment._id}`
-        });
+        try {
+            await notifyUsers({
+                receivers: [facultyID],
+                sender: student._id,
+                type: notificationTypes.appointmentRequest,
+                title: "New Appointment Request",
+                message: `${student.name} requested a meeting.`,
+                entityID: appointment._id,
+                entityModel: "Appointment",
+                redirectURL: `/appointments/${appointment._id}`
+            });
+        } catch (error) {
+            console.error(error.message);
+        }
 
         return res.status(201).json({
             success: true,
@@ -152,6 +156,7 @@ export const bookAppointment = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -171,6 +176,33 @@ export const getStudentAppointments = async (req, res) => {
                 message: "You can only see your own appointments"
             });
 
+        const now = new Date();
+
+        await Appointment.updateMany(
+            {
+                student: student._id,
+                status: "approved",
+                endTime: { $lt: now }
+            },
+            {
+                $set: { status: "completed" }
+            }
+        );
+
+        await Appointment.updateMany(
+            {
+                student: student._id,
+                status: "pending",
+                endTime: { $lt: now }
+            },
+            {
+                $set: {
+                    status: "rejected",
+                    rejectionReason: "Appointment request expired"
+                }
+            }
+        );
+
         const appointments = await Appointment.find({ student: student._id }).sort({ startTime: -1 }).populate("faculty", "name email room");
 
         return res.status(200).json({
@@ -181,6 +213,7 @@ export const getStudentAppointments = async (req, res) => {
 
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -200,16 +233,72 @@ export const getFacultyAppointments = async (req, res) => {
                 message: "You can see your own appointments"
             });
 
-        const appointments = await Appointment.find({ faculty: faculty._id }).sort({ startTime: -1 }).populate("student", "name email");
+        const now = new Date();
+
+        await Appointment.updateMany(
+            {
+                faculty: faculty._id,
+                status: "approved",
+                endTime: { $lt: now }
+            },
+            {
+                $set: { status: "completed" }
+            }
+        );
+
+        await Appointment.updateMany(
+            {
+                faculty: faculty._id,
+                status: "pending",
+                endTime: { $lt: now }
+            },
+            {
+                $set: {
+                    status: "rejected",
+                    rejectionReason: "Appointment request expired"
+                }
+            }
+        );
+
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = 10;
+        const skip = (page - 1) * limit;
+
+        const status = req.query.status;
+
+        const filter = {
+            faculty: faculty._id,
+            status: { $in: ["pending", "approved", "completed"] }
+        };
+
+        const allowedStatuses = ["pending", "approved", "completed"];
+
+        if (status && !allowedStatuses.includes(status))
+            return res.status(400).json({
+                success: false,
+                message: "Invalid appointment status"
+            });
+
+        if (status)
+            filter.status = status;
+
+        const appointments = await Appointment.find(filter).sort({ startTime: -1 }).skip(skip).limit(limit).populate("student", "name email");
+
+        const totalAppointments = await Appointment.countDocuments(filter);
 
         return res.status(200).json({
             success: true,
-            count: appointments.length,
-            appointments
+            appointments,
+            pagination: {
+                page,
+                totalPages: Math.ceil(totalAppointments / limit),
+                totalAppointments
+            }
         });
 
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -262,16 +351,20 @@ export const updateAppointmentStatus = async (req, res) => {
 
             await appointment.save();
 
-            await notifyUsers({
-                receivers: [appointment.faculty],
-                sender: user._id,
-                type: notificationTypes.appointmentStatusChange,
-                title: "Cancellation Requested",
-                message: "Student requested to cancel the appointment.",
-                entityID: appointment._id,
-                entityModel: "Appointment",
-                redirectURL: `/appointments/${appointment._id}`
-            });
+            try {
+                await notifyUsers({
+                    receivers: [appointment.faculty],
+                    sender: user._id,
+                    type: notificationTypes.appointmentStatusChange,
+                    title: "Cancellation Requested",
+                    message: "Student requested to cancel the appointment.",
+                    entityID: appointment._id,
+                    entityModel: "Appointment",
+                    redirectURL: `/appointments/${appointment._id}`
+                });
+            } catch (error) {
+                console.error(error.message);
+            }
 
             return res.status(200).json({
                 success: true,
@@ -363,20 +456,25 @@ export const updateAppointmentStatus = async (req, res) => {
 
             await appointment.save();
 
-            await notifyUsers({
-                receivers: [appointment.student],
-                sender: user._id,
-                type: notificationTypes.appointmentStatusChange,
-                title: "Appointment Status Updated",
-                message: `Your appointment is now ${appointment.status}.`,
-                entityID: appointment._id,
-                entityModel: "Appointment",
-                redirectURL: `/appointments/${appointment._id}`
-            });
+            try {
+                await notifyUsers({
+                    receivers: [appointment.student],
+                    sender: user._id,
+                    type: notificationTypes.appointmentStatusChange,
+                    title: "Appointment Status Updated",
+                    message: `Your appointment is now ${appointment.status}.`,
+                    entityID: appointment._id,
+                    entityModel: "Appointment",
+                    redirectURL: `/appointments/${appointment._id}`
+                });
+            } catch (error) {
+                console.error(error.message);
+            }
 
             return res.status(200).json({
                 success: true,
-                message: "Appointment status updated successfully"
+                message: "Appointment status updated successfully",
+                appointment
             });
         }
 
@@ -386,6 +484,7 @@ export const updateAppointmentStatus = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -398,7 +497,7 @@ export const getAppointment = async (req, res) => {
         const id = req.params.id;
 
         const user = req.dbUser;
-        
+
         const appointment = await Appointment.findById(id).populate("faculty", "name email room").populate("student", "name email");
 
         if (!appointment)
@@ -421,6 +520,7 @@ export const getAppointment = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }

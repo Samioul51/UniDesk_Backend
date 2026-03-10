@@ -27,6 +27,6 @@ router.patch("/repository/:id",verifyFirebaseToken,verifyRole(["admin"]),itemSta
 
 // Item deletion
 
-router.delete("/repository/:id",verifyFirebaseToken,verifyRole(["admin"]),deleteItem);
+router.delete("/repository/:id",verifyFirebaseToken,verifyRole(["admin","faculty","student"]),deleteItem);
 
 export default router;

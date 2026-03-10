@@ -2,6 +2,7 @@ import { notificationTypes } from "../../constants/notificationTypes.js";
 import { Leaderboard } from "../../models/ContributionLeaderboardModel/leaderboard.model.js";
 import { Repository } from "../../models/RepositoryModel/repository.model.js";
 import { User } from "../../models/UserModel/user.model.js";
+import { validateFileResourceType } from "../../utils/CloudinaryValidation/cloudinaryValidation.js";
 import { deleteFromCloudinary } from "../../utils/DeleteFromCloudinary/deleteFromCloudinary.js";
 import { notifyUsers } from "../../utils/NotificationEngine/notificationService.js";
 
@@ -9,17 +10,23 @@ import { notifyUsers } from "../../utils/NotificationEngine/notificationService.
 
 export const itemUpload = async (req, res) => {
     try {
-        const { title, courseCode, courseName, year, semester, itemType, url, description } = req.body;
+        const { title, courseCode, courseName, year, semester, itemType, url, description, cloudinaryId, resourceType } = req.body;
 
         const uploader = req.dbUser._id;
 
-        if (!title || !courseCode || !courseName || !year || !semester || !itemType || !url || !description)
+        if (!title || !courseCode || !courseName || !year || !semester || !itemType || !url || !description || !cloudinaryId)
             return res.status(400).json({
                 success: false,
                 message: "All fields required"
             });
 
-        await Repository.create({
+        if (!validateFileResourceType(resourceType))
+            return res.status(400).json({
+                success: false,
+                message: "Invalid resource type"
+            });
+
+        const item = await Repository.create({
             title,
             courseCode,
             courseName,
@@ -27,31 +34,38 @@ export const itemUpload = async (req, res) => {
             semester,
             itemType,
             url,
+            cloudinaryId,
+            resourceType,
             uploader,
-            description,
-            status: "pending"
+            description
         });
 
         const admins = await User.find({ role: "admin" }).select("_id");
 
         if (admins.length > 0) {
-            await notifyUsers({
-                receivers: admins.map(a => a._id),
-                sender: uploader,
-                type: notificationTypes.contributionPending,
-                title: "New Contribution Pending",
-                message: "A new repository item needs review.",
-                entityModel: "Repository",
-                redirectURL: "/admin/repository"
-            });
+            try {
+                await notifyUsers({
+                    receivers: admins.map(a => a._id),
+                    sender: uploader,
+                    type: notificationTypes.contributionPending,
+                    title: "New Contribution Pending",
+                    message: "A new repository item needs review.",
+                    entityModel: "Repository",
+                    redirectURL: "/admin/repository"
+                });
+            } catch (error) {
+                console.error(error.message);
+            }
         }
 
         return res.status(201).json({
             success: true,
-            message: "Item uploaded successfully and is pending approval"
+            message: "Item uploaded successfully and is pending approval",
+            item
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -61,7 +75,7 @@ export const itemUpload = async (req, res) => {
 
 export const getItems = async (req, res) => {
     try {
-        const { courseCode, year, semester, itemType, search, page = 1, limit = 10 } = req.query;
+        const { courseCode, year, semester, itemType, search, page = 1, limit = 9 } = req.query;
 
         const filter = {};
 
@@ -76,9 +90,17 @@ export const getItems = async (req, res) => {
         if (search)
             filter.title = { $regex: search, $options: "i" };
 
-        if (!req.dbUser || req.dbUser.role !== "admin")
-            filter.status = "approved";
-
+        if (!req.dbUser || req.dbUser.role !== "admin") {
+            filter.$or = [
+                {
+                    status: "approved"
+                },
+                {
+                    status: "pending",
+                    uploader: req.dbUser?._id
+                }
+            ];
+        }
         const skip = (page - 1) * limit;
 
         const items = await Repository.find(filter).populate("uploader", "name").sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
@@ -94,6 +116,7 @@ export const getItems = async (req, res) => {
         })
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -127,6 +150,7 @@ export const getSingleItem = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -147,6 +171,8 @@ export const itemStatusUpdate = async (req, res) => {
                 success: false,
                 message: "Item not found"
             });
+
+        const wasApproved = item.status === "approved";
 
         const { status, rejectedReason } = req.body;
 
@@ -193,40 +219,63 @@ export const itemStatusUpdate = async (req, res) => {
             { $set: updatedData }
         );
 
+        if (status === "approved" && !wasApproved) {
+            await Leaderboard.findOneAndUpdate(
+                { user: item.uploader },
+                {
+                    $inc: {
+                        totalPoints: 10,
+                        itemsApproved: 1
+                    }
+                },
+                { upsert: true, new: true }
+            );
+        }
+
         const updatedItem = await Repository.findById(id);
 
         if (status === "approved") {
-            await notifyUsers({
-                receivers: [updatedItem.uploader],
-                sender: admin._id,
-                type: notificationTypes.contributionApproved,
-                title: "Contribution Approved",
-                message: "Your uploaded item has been approved.",
-                entityID: updatedItem._id,
-                entityModel: "Repository",
-                redirectURL: `/repository/${updatedItem._id}`
-            });
+            try {
+                await notifyUsers({
+                    receivers: [updatedItem.uploader],
+                    sender: admin._id,
+                    type: notificationTypes.contributionApproved,
+                    title: "Contribution Approved",
+                    message: "Your uploaded item has been approved.",
+                    entityID: updatedItem._id,
+                    entityModel: "Repository",
+                    redirectURL: `/repository/${updatedItem._id}`
+                });
+            } catch (error) {
+                console.error(error.message);
+            }
         }
 
         if (status === "rejected") {
-            await notifyUsers({
-                receivers: [updatedItem.uploader],
-                sender: admin._id,
-                type: notificationTypes.contributionRejected,
-                title: "Contribution Rejected",
-                message: "Your uploaded item was rejected.",
-                entityID: updatedItem._id,
-                entityModel: "Repository",
-                redirectURL: `/repository/${updatedItem._id}`
-            });
+            try {
+                await notifyUsers({
+                    receivers: [updatedItem.uploader],
+                    sender: admin._id,
+                    type: notificationTypes.contributionRejected,
+                    title: "Contribution Rejected",
+                    message: "Your uploaded item was rejected.",
+                    entityID: updatedItem._id,
+                    entityModel: "Repository",
+                    redirectURL: `/repository/${updatedItem._id}`
+                });
+            } catch (error) {
+                console.error(error.message);
+            }
         }
 
         return res.status(200).json({
             success: true,
-            message: "Item status updated successfully"
+            message: "Item status updated successfully",
+            item: updatedItem
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -274,6 +323,7 @@ export const getLeaderboard = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -287,14 +337,22 @@ export const deleteItem = async (req, res) => {
 
         const item = await Repository.findById(id);
 
+        const user = req.dbUser;
+
         if (!item)
             return res.status(404).json({
                 success: false,
                 message: "Item not found"
             });
 
+        if (user.role !== "admin" && (item.uploader.toString() !== user._id.toString()))
+            return res.status(403).json({
+                success: false,
+                message: "You can delete only your items"
+            });
+
         try {
-            await deleteFromCloudinary(item.cloudinaryId);
+            await deleteFromCloudinary(item.cloudinaryId, item.resourceType || "raw");
         } catch (error) {
             console.error("Cloudinary deletion failed:", error.message);
         }
@@ -308,6 +366,7 @@ export const deleteItem = async (req, res) => {
 
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }

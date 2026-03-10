@@ -291,8 +291,9 @@ export const createUser = async (req, res) => {
         });
     }
     catch (error) {
-        return res.status(500).json({
-            message: error.message
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
         });
     }
 };
@@ -340,8 +341,9 @@ export const getUsers = async (req, res) => {
         });
     }
     catch (error) {
-        return res.status(500).json({
-            message: error.message
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
         });
     }
 };
@@ -371,8 +373,9 @@ export const getSingleUser = async (req, res) => {
             user
         });
     } catch (error) {
-        return res.status(500).json({
-            message: error.message
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
         });
     }
 };
@@ -382,7 +385,7 @@ export const getSingleUser = async (req, res) => {
 export const updateProfile = async (req, res) => {
     try {
         const email = req.params.email?.trim().toLowerCase();
-        const { name, photoURL, photoId, room,biography,researchInterests } = req.body;
+        const { name, photoURL, photoId, room, biography, researchInterests, phone } = req.body;
 
         if (req.user.email !== email)
             return res.status(403).json({
@@ -390,100 +393,16 @@ export const updateProfile = async (req, res) => {
                 message: "You can update only your own profile"
             });
 
-        if (!name && !photoURL && !photoId && !room && !biography && !researchInterests)
+        if (!name && !photoURL && !photoId && !room && !biography && !researchInterests && !phone)
             return res.status(400).json({
                 success: false,
                 message: "At least one field is required to update profile"
             });
 
-        if ((room || biography || researchInterests) && req.dbUser.role !== "faculty")
+        if ((room || biography || researchInterests || phone) && req.dbUser.role !== "faculty")
             return res.status(403).json({
                 success: false,
-                message: "Only faculty can update room, biography and research interests"
-            });
-
-        if ((photoURL && !photoId) || (photoId && !photoURL))
-            return res.status(400).json({
-                success: false,
-                message: "Both PhotoURL and PhotoId required"
-            });
-
-        const user = await User.findOne({ email });
-
-        if (!user)
-            return res.status(404).json({
-                success: false,
-                message: "User not found"
-            });
-
-        if (name)
-            user.name = name;
-
-        if (room)
-            user.room = room;
-
-        if(biography)
-            user.biography=biography;
-
-        if(researchInterests)
-            user.researchInterests=researchInterests;
-
-        if (photoURL && photoId) {
-            if (user.photoId && user.photoId !== photoId) {
-                try {
-                    await deleteFromCloudinary(user.photoId);
-                } catch (error) {
-                    console.error("Cloudinary deletion failed:", error.message);
-                }
-            }
-
-            user.photoURL = photoURL;
-            user.photoId = photoId;
-        }
-
-        await user.save();
-
-        const updatedUser = user.toObject({versionKey:false});
-
-        return res.status(200).json({
-            success: true,
-            message: "Profile updated successfully"
-        });
-    } catch (error) {
-        return res.status(500).json({
-            message: error.message
-        });
-    }
-};
-
-// Profile update api for admin only
-
-export const adminUpdateProfile = async (req, res) => {
-    try {
-        const email = req.params.email?.trim().toLowerCase();
-
-        if (!email)
-            return res.status(400).json({
-                success: false,
-                message: "User email is required"
-            });
-
-        const { name, photoURL, photoId, status, room,biography, researchInterests } = req.body;
-
-        if (!name && !photoURL && !photoId && !status && !room && !biography && !researchInterests)
-            return res.status(400).json({
-                success: false,
-                message: "At least one field is required to update profile"
-            });
-
-        const allowedStatus = ["verified", "suspended"];
-
-        const cleanStatus = typeof status === "string" ? status.trim() : null;
-
-        if (cleanStatus && !allowedStatus.includes(cleanStatus))
-            return res.status(400).json({
-                success: false,
-                message: "Invalid status value"
+                message: "Only faculty can update room, biography, phone number and research interests"
             });
 
         if ((photoURL && !photoId) || (photoId && !photoURL))
@@ -512,6 +431,102 @@ export const adminUpdateProfile = async (req, res) => {
         if (researchInterests)
             user.researchInterests = researchInterests;
 
+        if (phone)
+            user.phone = phone
+
+        if (photoURL && photoId) {
+            if (user.photoId && user.photoId !== photoId) {
+                try {
+                    await deleteFromCloudinary(user.photoId);
+                } catch (error) {
+                    console.error("Cloudinary deletion failed:", error.message);
+                }
+            }
+
+            user.photoURL = photoURL;
+            user.photoId = photoId;
+        }
+
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Profile updated successfully",
+            user
+        });
+    } catch (error) {
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
+        });
+    }
+};
+
+// Profile update api for admin only
+
+export const adminUpdateProfile = async (req, res) => {
+    try {
+        const email = req.params.email?.trim().toLowerCase();
+
+        if (!email)
+            return res.status(400).json({
+                success: false,
+                message: "User email is required"
+            });
+
+        const user=await User.findOne({email:email});
+
+        if(!user)
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+
+        const { name, photoURL, photoId, status, room, biography, researchInterests, phone } = req.body;
+
+        if (!name && !photoURL && !photoId && !status && !room && !biography && !researchInterests && !phone)
+            return res.status(400).json({
+                success: false,
+                message: "At least one field is required to update profile"
+            });
+
+        const allowedStatus = ["verified", "suspended"];
+
+        const cleanStatus = typeof status === "string" ? status.trim() : null;
+
+        if (cleanStatus && !allowedStatus.includes(cleanStatus))
+            return res.status(400).json({
+                success: false,
+                message: "Invalid status value"
+            });
+
+        if ((room || biography || researchInterests || phone) && user.role !== "faculty")
+            return res.status(403).json({
+                success: false,
+                message: "Only faculty can update room, biography, phone number and research interests"
+            });
+
+        if ((photoURL && !photoId) || (photoId && !photoURL))
+            return res.status(400).json({
+                success: false,
+                message: "Both PhotoURL and PhotoId required"
+            });
+
+        if (name)
+            user.name = name;
+
+        if (room)
+            user.room = room;
+
+        if (biography)
+            user.biography = biography;
+
+        if (researchInterests)
+            user.researchInterests = researchInterests;
+
+        if (phone)
+            user.phone = phone;
+
         if (cleanStatus)
             user.status = cleanStatus;
 
@@ -530,7 +545,7 @@ export const adminUpdateProfile = async (req, res) => {
 
         await user.save();
 
-        const updatedUser = user.toObject({versionKey:false});
+        const updatedUser = user.toObject({ versionKey: false });
 
         return res.status(200).json({
             success: true,
@@ -538,8 +553,9 @@ export const adminUpdateProfile = async (req, res) => {
             user: updatedUser
         });
     } catch (error) {
-        return res.status(500).json({
-            message: error.message
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
         });
     }
 };
@@ -579,8 +595,9 @@ export const adminDeleteUser = async (req, res) => {
             message: "User permanently deleted"
         });
     } catch (error) {
-        return res.status(500).json({
-            message: error.message
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
         });
     }
 };

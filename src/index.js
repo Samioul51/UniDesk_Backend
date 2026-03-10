@@ -1,11 +1,9 @@
-import dotenv from 'dotenv';
+import "dotenv/config";
 import connectDB from './config/db/dbConnect.js';
 import app from './app.js';
 import http from "http";
 import { Server } from 'socket.io';
 import "./cron/reminderJobs.js";
-
-dotenv.config();
 
 const port = process.env.PORT || 3000;
 

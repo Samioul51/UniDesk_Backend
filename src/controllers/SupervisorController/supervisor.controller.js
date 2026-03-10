@@ -78,16 +78,19 @@ export const assignSupervisee = async (req, res) => {
         });
 
         await supervisorDoc.save();
-
-        await notifyUsers({
-            receivers: [studentID],
-            sender: supervisorID,
-            type: notificationTypes.supervisorAssigned,
-            title: "Supervisor Assigned",
-            message: "You have been assigned a supervisor.",
-            entityModel: "Supervisor",
-            redirectURL: "/supervisor"
-        });
+        try {
+            await notifyUsers({
+                receivers: [studentID],
+                sender: supervisorID,
+                type: notificationTypes.supervisorAssigned,
+                title: "Supervisor Assigned",
+                message: "You have been assigned a supervisor.",
+                entityModel: "Supervisor",
+                redirectURL: "/supervisor"
+            });
+        } catch (error) {
+            console.error(error.message);
+        }
 
         return res.status(201).json({
             success: true,
@@ -95,6 +98,7 @@ export const assignSupervisee = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -107,6 +111,13 @@ export const getSupervises = async (req, res) => {
         const supervisorID = req.params.supervisorID;
 
         const user = req.dbUser;
+
+        const page = parseInt(req.query.page) || 1;
+        const limit = 10;
+        const skip = (page - 1) * limit;
+
+        const search = req.query.search?.trim().toLowerCase();
+        const relationshipType = req.query.relationshipType?.trim().toLowerCase();
 
         const supervisor = await User.findById(supervisorID);
 
@@ -128,13 +139,19 @@ export const getSupervises = async (req, res) => {
                 message: "You are not authorized to see this Faculty's supervises"
             });
 
-        const supervisorDoc = await Supervisor.findOne({ supervisor: supervisorID }).populate("supervises.student", "name email");
+        const supervisorDoc = await Supervisor.findOne({ supervisor: supervisorID }).populate("supervises.student", "name email photoURL studentID");
 
         if (!supervisorDoc)
             return res.status(200).json({
                 success: true,
-                count: 0,
-                supervises: []
+                search: false,
+                activeSupervises: [],
+                completedSupervises: [],
+                completedPagination: {
+                    page: 1,
+                    totalPages: 0,
+                    totalCompleted: 0
+                }
             });
 
         const result = await Promise.all(
@@ -160,19 +177,45 @@ export const getSupervises = async (req, res) => {
                     relationshipType: item.relationshipType,
                     topic: item.topic,
                     description: item.description,
+                    status: item.status,
                     lastMeetingAt: lastMeeting ? lastMeeting.startTime : null,
                     nextMeetingAt: nextMeeting ? nextMeeting.startTime : null
                 };
             })
         );
 
+        let filteredResult = result;
+
+         if (relationshipType) 
+            filteredResult = filteredResult.filter(
+                item => item.relationshipType.toLowerCase() === relationshipType
+            );
+
+        if (search) 
+            filteredResult = filteredResult.filter(item =>
+                item.student?.name?.toLowerCase().includes(search) || item.student?.email?.toLowerCase().includes(search) || item.student?.studentID?.toLowerCase().includes(search) || item.topic?.toLowerCase().includes(search) || item.relationshipType?.toLowerCase().includes(search) || item.status?.toLowerCase().includes(search)
+            );
+
+        const activeSupervises = filteredResult.filter(supervisee => supervisee.status === "active");
+        const completedAll = filteredResult.filter(supervisee => supervisee.status === "completed");
+
+        const completedSupervises = completedAll.slice(skip, skip + limit);
+
         return res.status(200).json({
             success: true,
-            count: result.length,
-            supervises: result
+            search: !!search,
+            relationshipType: relationshipType || null,
+            activeSupervises,
+            completedSupervises,
+            completedPagination: {
+                page,
+                totalPages: Math.ceil(completedAll.length / limit),
+                totalCompleted: completedAll.length
+            }
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -206,7 +249,7 @@ export const getSupervisors = async (req, res) => {
                 message: "You are not authorized to see this student's supervisors"
             });
 
-        const supervisorDocs = await Supervisor.find({ "supervises.student": studentID }).populate("supervisor", "name email");
+        const supervisorDocs = await Supervisor.find({ "supervises.student": studentID }).populate("supervisor", "name email photoURL");
 
         if (!supervisorDocs.length)
             return res.status(200).json({
@@ -232,17 +275,18 @@ export const getSupervisors = async (req, res) => {
             for (const item of relationships) {
                 const meetings = appointments.filter(a => a.faculty.toString() === doc.supervisor._id.toString() && a.meetingType === item.relationshipType);
 
-                const nextMeeting=meetings.find(
-                    a=>a.status==="approved" && a.startTime>now
+                const nextMeeting = meetings.find(
+                    a => a.status === "approved" && a.startTime > now
                 );
 
-                const lastMeeting=[...meetings].reverse().find(a=>a.status==="completed" && a.startTime<now);
+                const lastMeeting = [...meetings].reverse().find(a => a.status === "completed" && a.startTime < now);
 
                 result.push({
                     supervisor: doc.supervisor,
                     relationshipType: item.relationshipType,
                     topic: item.topic,
                     description: item.description,
+                    status: item.status,
                     lastMeetingAt: lastMeeting ? lastMeeting.startTime : null,
                     nextMeetingAt: nextMeeting ? nextMeeting.startTime : null
                 });
@@ -257,6 +301,7 @@ export const getSupervisors = async (req, res) => {
 
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -268,7 +313,7 @@ export const updateSuperViseeStatus = async (req, res) => {
     try {
         const supervisorID = req.params.supervisorID;
 
-        const user=req.dbUser;
+        const user = req.dbUser;
 
         const { studentID, relationshipType, status } = req.body;
 
@@ -278,7 +323,7 @@ export const updateSuperViseeStatus = async (req, res) => {
                 message: "All fields required"
             });
 
-        if(user.role!=="admin" && user._id.toString()!==supervisorID.toString())
+        if (user.role !== "admin" && user._id.toString() !== supervisorID.toString())
             return res.status(403).json({
                 success: false,
                 message: "You are not authorized to change status"
@@ -303,7 +348,7 @@ export const updateSuperViseeStatus = async (req, res) => {
                 s.relationshipType === relationshipType
         );
 
-        if(!relation)
+        if (!relation)
             return res.status(404).json({
                 success: false,
                 message: "Supervisee relationship not found"
@@ -325,6 +370,7 @@ export const updateSuperViseeStatus = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }
@@ -335,10 +381,10 @@ export const updateSuperViseeStatus = async (req, res) => {
 export const removeSupervisee = async (req, res) => {
     try {
         const supervisorID = req.params.supervisorID;
-        const user=req.dbUser;
+        const user = req.dbUser;
         const { studentID, relationshipType } = req.body;
 
-        if(user.role!=="admin" && user._id.toString()!==supervisorID.toString())
+        if (user.role !== "admin" && user._id.toString() !== supervisorID.toString())
             return res.status(403).json({
                 success: false,
                 message: "You are not authorized to remove supervisee"
@@ -387,6 +433,7 @@ export const removeSupervisee = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: error.message
         });
     }

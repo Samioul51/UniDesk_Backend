@@ -50,7 +50,10 @@ export const createCourse = async (req, res) => {
             return res.status(409).json({
                 message: "Course already exists for this session"
             });
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
@@ -102,13 +105,19 @@ export const studentJoinCourseByInvitation = async (req, res) => {
             { $addToSet: { students: userId } }
         );
 
+        const updatedCourse = await Course.findById(course._id)
+
         return res.status(200).json({
             success: true,
-            message: "Joined course successfully"
-        })
+            message: "Joined course successfully",
+            course: updatedCourse
+        });
 
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
@@ -150,7 +159,10 @@ export const studentLeaveCourse = async (req, res) => {
             message: "Left course successfully"
         })
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
@@ -208,13 +220,19 @@ export const facultyJoinCourseByInvitation = async (req, res) => {
             { $addToSet: { faculties: userId } }
         );
 
+        const updatedCourse = await Course.findById(course._id);
+
         return res.status(200).json({
             success: true,
-            message: "Joined course successfully"
-        })
+            message: "Joined course successfully",
+            course: updatedCourse
+        });
 
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
@@ -268,7 +286,10 @@ export const facultyLeaveCourse = async (req, res) => {
             message: "Left course successfully"
         })
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
@@ -319,12 +340,18 @@ export const removeStudentFromCourse = async (req, res) => {
             { $pull: { students: studentId } }
         );
 
+        const updatedCourse = await Course.findById(course._id);
+
         return res.status(200).json({
             success: true,
-            message: "Student removed from course successfully"
+            message: "Student removed from course successfully",
+            course: updatedCourse
         });
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
@@ -343,7 +370,10 @@ export const adminAllCourses = async (req, res) => {
             courses
         });
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
@@ -381,7 +411,10 @@ export const singleCourse = async (req, res) => {
             course
         });
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
@@ -429,48 +462,30 @@ export const getMyCourses = async (req, res) => {
             ...searchFilter
         };
 
-        if (search) {
-            const courses = await Course.find(filter).populate("faculties", "name email photoURL").populate("students", "name email studentID").sort({ status: 1, updatedAt: -1 });
+        const courses = await Course.find(filter).populate("faculties", "name email photoURL").populate("students", "name email studentID").sort({ status: 1, updatedAt: -1 });
 
-            const activeCourses = courses.filter(c => c.status === "active");
-            const completedCourses = courses.filter(c => c.status === "completed");
+        const activeCourses = courses.filter(c => c.status === "active");
 
-            return res.status(200).json({
-                success: true,
-                search: true,
-                activeCourses,
-                completedCourses
-            });
-        }
+        const completedAll = courses.filter(c => c.status === "completed");
 
-        const activeCourses = await Course.find({
-            ...membershipFilter,
-            status: "active"
-        }).populate("faculties", "name email photoURL").populate("students", "name email studentID").sort({ updatedAt: -1 });
-
-        const completedCourses = await Course.find({
-            ...membershipFilter,
-            status: "completed"
-        }).populate("faculties", "name email photoURL").populate("students", "name email studentID").sort({ updatedAt: -1 }).skip(skip).limit(limit);
-
-        const totalCompleted = await Course.countDocuments({
-            ...membershipFilter,
-            status: "completed"
-        });
+        const completedCourses = completedAll.slice(skip, skip + limit);
 
         return res.status(200).json({
             success: true,
-            search: false,
+            search: !!search,
             activeCourses,
             completedCourses,
             completedPagination: {
                 page,
-                totalPages: Math.ceil(totalCompleted / limit),
-                totalCompleted
+                totalPages: Math.ceil(completedAll.length / limit),
+                totalCompleted:completedAll.length
             }
         });
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
@@ -567,14 +582,20 @@ export const updateCourse = async (req, res) => {
                 message: "Course not found"
             });
 
+        const updatedCourse = await Course.findById(course._id);
+
         return res.status(200).json({
             success: true,
             message: "Course updated successfully",
+            course: updatedCourse,
             ...(updatedFields.invitationCode && {
                 newInvitationLink: `${process.env.LIVE_LINK}/join-course?code=${updatedFields.invitationCode}`
             })
         });
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };

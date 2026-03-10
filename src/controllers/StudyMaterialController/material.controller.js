@@ -2,13 +2,15 @@ import { notificationTypes } from "../../constants/notificationTypes.js";
 import { Course } from "../../models/CourseModel/course.model.js";
 import { Material } from "../../models/StudyMaterialModel/material.model.js";
 import { notifyUsers } from "../../utils/NotificationEngine/notificationService.js";
+import { deleteFromCloudinary } from "../../utils/DeleteFromCloudinary/deleteFromCloudinary.js";
+import { validateFileResourceType } from "../../utils/CloudinaryValidation/cloudinaryValidation.js";
 
 // Upload material
 
 export const uploadMaterial = async (req, res) => {
     try {
         const id = req.params.id;
-        const { title, description, url } = req.body;
+        const { title, description, url, cloudinaryId, resourceType } = req.body;
 
         const faculty = req.dbUser;
 
@@ -28,10 +30,16 @@ export const uploadMaterial = async (req, res) => {
                 message: "You are not teaching this course"
             });
 
-        if (!title || !description || !url)
+        if (!title || !description || !url || !cloudinaryId || !resourceType)
             return res.status(400).json({
                 success: false,
                 message: "Title, Description and URL required"
+            });
+
+        if(!validateFileResourceType(resourceType))
+            return res.status(400).json({
+                success: false,
+                message: "Invalid resource type"
             });
 
         const material = await Material.create({
@@ -39,28 +47,38 @@ export const uploadMaterial = async (req, res) => {
             title,
             description,
             url,
+            cloudinaryId,
+            resourceType,
             uploader: faculty._id
         });
 
         if (course.students && course.students.length > 0) {
-            await notifyUsers({
-                receivers: course.students,
-                sender: faculty._id,
-                type: notificationTypes.newStudyMaterial,
-                title: "New Study Material",
-                message: `${title} has been uploaded.`,
-                entityID: material._id,
-                entityModel: "Material",
-                redirectURL: `/materials/${material._id}`
-            });
+            try {
+                await notifyUsers({
+                    receivers: course.students,
+                    sender: faculty._id,
+                    type: notificationTypes.newStudyMaterial,
+                    title: "New Study Material",
+                    message: `${title} has been uploaded.`,
+                    entityID: material._id,
+                    entityModel: "Material",
+                    redirectURL: `/materials/${material._id}`
+                });
+            } catch (error) {
+                console.error(error.message);
+            }
         }
 
         return res.status(201).json({
             success: true,
-            message: "Material uploaded successfully"
+            message: "Material uploaded successfully",
+            material
         });
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
@@ -95,7 +113,10 @@ export const courseMaterials = async (req, res) => {
             materials
         })
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({ 
+            success:false,
+            message: error.message 
+        });
     }
 };
 
@@ -105,7 +126,7 @@ export const deleteMaterial = async (req, res) => {
     try {
         const id = req.params.id;
 
-        const faculty=req.dbUser;
+        const faculty = req.dbUser;
 
         const material = await Material.findById(id);
 
@@ -115,7 +136,13 @@ export const deleteMaterial = async (req, res) => {
                 message: "Material not found"
             });
 
-        const course=await Course.findById(material.course);
+        const course = await Course.findById(material.course);
+
+        if (!course)
+            return res.status(404).json({
+                success: false,
+                message: "Course not found"
+            });
 
         const isFaculty = course.faculties.some(t => t.toString() === faculty._id.toString());
 
@@ -125,6 +152,12 @@ export const deleteMaterial = async (req, res) => {
                 message: "You are not authorized to delete this course material"
             });
 
+        try {
+            await deleteFromCloudinary(material.cloudinaryId,material.resourceType || "raw");
+        } catch (error) {
+            console.error("Material deletion from cloud error");
+        }
+
         await Material.deleteOne({ _id: id });
 
         return res.status(200).json({
@@ -133,6 +166,9 @@ export const deleteMaterial = async (req, res) => {
         });
 
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
