@@ -139,7 +139,7 @@ export const getSupervises = async (req, res) => {
                 message: "You are not authorized to see this Faculty's supervises"
             });
 
-        const supervisorDoc = await Supervisor.findOne({ supervisor: supervisorID }).populate("supervises.student", "name email photoURL");
+        const supervisorDoc = await Supervisor.findOne({ supervisor: supervisorID }).populate("supervises.student", "name email photoURL studentID");
 
         if (!supervisorDoc)
             return res.status(200).json({
@@ -193,7 +193,7 @@ export const getSupervises = async (req, res) => {
 
         if (search) 
             filteredResult = filteredResult.filter(item =>
-                item.student?.name?.toLowerCase().includes(search) || item.topic?.toLowerCase().includes(search) || item.relationshipType?.toLowerCase().includes(search) || item.status?.toLowerCase().includes(search)
+                item.student?.name?.toLowerCase().includes(search) || item.student?.email?.toLowerCase().includes(search) || item.student?.studentID?.toLowerCase().includes(search) || item.topic?.toLowerCase().includes(search) || item.relationshipType?.toLowerCase().includes(search) || item.status?.toLowerCase().includes(search)
             );
 
         const activeSupervises = filteredResult.filter(supervisee => supervisee.status === "active");

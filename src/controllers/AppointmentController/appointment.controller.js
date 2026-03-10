@@ -205,16 +205,25 @@ export const getFacultyAppointments = async (req, res) => {
                 success: false,
                 message: "You can see your own appointments"
             });
-        
-        const page = parseInt(req.query.page) || 1;
+
+        const page = Math.max(1, parseInt(req.query.page) || 1);
         const limit = 10;
         const skip = (page - 1) * limit;
 
         const status = req.query.status;
 
         const filter = {
-            faculty: faculty._id
+            faculty: faculty._id,
+            status: { $in: ["pending", "approved", "completed"] }
         };
+
+        const allowedStatuses = ["pending", "approved", "completed"];
+
+        if (status && !allowedStatuses.includes(status))
+            return res.status(400).json({
+                success: false,
+                message: "Invalid appointment status"
+            });
 
         if (status)
             filter.status = status;
