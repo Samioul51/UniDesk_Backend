@@ -75,7 +75,7 @@ export const itemUpload = async (req, res) => {
 
 export const getItems = async (req, res) => {
     try {
-        const { courseCode, year, semester, itemType, search, page = 1, limit = 10 } = req.query;
+        const { courseCode, year, semester, itemType, search, page = 1, limit = 9 } = req.query;
 
         const filter = {};
 
@@ -90,9 +90,17 @@ export const getItems = async (req, res) => {
         if (search)
             filter.title = { $regex: search, $options: "i" };
 
-        if (!req.dbUser || req.dbUser.role !== "admin")
-            filter.status = "approved";
-
+        if (!req.dbUser || req.dbUser.role !== "admin") {
+            filter.$or = [
+                {
+                    status: "approved"
+                },
+                {
+                    status: "pending",
+                    uploader: req.dbUser?._id
+                }
+            ];
+        }
         const skip = (page - 1) * limit;
 
         const items = await Repository.find(filter).populate("uploader", "name").sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
