@@ -164,6 +164,7 @@ export const getSupervises = async (req, res) => {
                     relationshipType: item.relationshipType,
                     topic: item.topic,
                     description: item.description,
+                    status:item.status,
                     lastMeetingAt: lastMeeting ? lastMeeting.startTime : null,
                     nextMeetingAt: nextMeeting ? nextMeeting.startTime : null
                 };
@@ -248,6 +249,7 @@ export const getSupervisors = async (req, res) => {
                     relationshipType: item.relationshipType,
                     topic: item.topic,
                     description: item.description,
+                    status:item.status,
                     lastMeetingAt: lastMeeting ? lastMeeting.startTime : null,
                     nextMeetingAt: nextMeeting ? nextMeeting.startTime : null
                 });
