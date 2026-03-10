@@ -112,6 +112,12 @@ export const getSupervises = async (req, res) => {
 
         const user = req.dbUser;
 
+        const page = parseInt(req.query.page) || 1;
+        const limit = 10;
+        const skip = (page - 1) * limit;
+
+        const search = req.query.search?.trim().toLowerCase();
+
         const supervisor = await User.findById(supervisorID);
 
         if (!supervisor)
@@ -137,8 +143,14 @@ export const getSupervises = async (req, res) => {
         if (!supervisorDoc)
             return res.status(200).json({
                 success: true,
-                count: 0,
-                supervises: []
+                search: false,
+                activeSupervises: [],
+                completedSupervises: [],
+                completedPagination: {
+                    page: 1,
+                    totalPages: 0,
+                    totalCompleted: 0
+                }
             });
 
         const result = await Promise.all(
@@ -164,17 +176,35 @@ export const getSupervises = async (req, res) => {
                     relationshipType: item.relationshipType,
                     topic: item.topic,
                     description: item.description,
-                    status:item.status,
+                    status: item.status,
                     lastMeetingAt: lastMeeting ? lastMeeting.startTime : null,
                     nextMeetingAt: nextMeeting ? nextMeeting.startTime : null
                 };
             })
         );
 
+        let filteredResult = result;
+
+        if (search) 
+            filteredResult = result.filter(item =>
+                item.student?.name?.toLowerCase().includes(search) || item.topic?.toLowerCase().includes(search) || item.relationshipType?.toLowerCase().includes(search) || item.status?.toLowerCase().includes(search)
+            );
+
+        const activeSupervises = filteredResult.filter(supervisee => supervisee.status === "active");
+        const completedAll = filteredResult.filter(supervisee => supervisee.status === "completed");
+
+        const completedSupervises = completedAll.slice(skip, skip + limit);
+
         return res.status(200).json({
             success: true,
-            count: result.length,
-            supervises: result
+            search: !!search,
+            activeSupervises,
+            completedSupervises,
+            completedPagination: {
+                page,
+                totalPages: Math.ceil(completedAll.length / limit),
+                totalCompleted: completedAll.length
+            }
         });
     } catch (error) {
         return res.status(500).json({
@@ -249,7 +279,7 @@ export const getSupervisors = async (req, res) => {
                     relationshipType: item.relationshipType,
                     topic: item.topic,
                     description: item.description,
-                    status:item.status,
+                    status: item.status,
                     lastMeetingAt: lastMeeting ? lastMeeting.startTime : null,
                     nextMeetingAt: nextMeeting ? nextMeeting.startTime : null
                 });
