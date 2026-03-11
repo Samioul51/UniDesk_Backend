@@ -67,6 +67,31 @@ cron.schedule("*/10 * * * *", async () => {
                 console.log(error);
             }
         }
+
+        // Appointment status already update for expired pending and already completed approved
+
+        await Appointment.updateMany(
+            {
+                status: "approved",
+                endTime: { $lt: now }
+            },
+            {
+                $set: { status: "completed" }
+            }
+        );
+
+        await Appointment.updateMany(
+            {
+                status: "pending",
+                endTime: { $lt: now }
+            },
+            {
+                $set: {
+                    status: "rejected",
+                    rejectionReason: "Appointment request expired"
+                }
+            }
+        );
     } catch (error) {
         console.log(error);
     }

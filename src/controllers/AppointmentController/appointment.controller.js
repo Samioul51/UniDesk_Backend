@@ -176,33 +176,6 @@ export const getStudentAppointments = async (req, res) => {
                 message: "You can only see your own appointments"
             });
 
-        const now = new Date();
-
-        await Appointment.updateMany(
-            {
-                student: student._id,
-                status: "approved",
-                endTime: { $lt: now }
-            },
-            {
-                $set: { status: "completed" }
-            }
-        );
-
-        await Appointment.updateMany(
-            {
-                student: student._id,
-                status: "pending",
-                endTime: { $lt: now }
-            },
-            {
-                $set: {
-                    status: "rejected",
-                    rejectionReason: "Appointment request expired"
-                }
-            }
-        );
-
         const appointments = await Appointment.find({ student: student._id }).sort({ startTime: -1 }).populate("faculty", "name email room");
 
         return res.status(200).json({
@@ -232,33 +205,6 @@ export const getFacultyAppointments = async (req, res) => {
                 success: false,
                 message: "You can see your own appointments"
             });
-
-        const now = new Date();
-
-        await Appointment.updateMany(
-            {
-                faculty: faculty._id,
-                status: "approved",
-                endTime: { $lt: now }
-            },
-            {
-                $set: { status: "completed" }
-            }
-        );
-
-        await Appointment.updateMany(
-            {
-                faculty: faculty._id,
-                status: "pending",
-                endTime: { $lt: now }
-            },
-            {
-                $set: {
-                    status: "rejected",
-                    rejectionReason: "Appointment request expired"
-                }
-            }
-        );
 
         const page = Math.max(1, parseInt(req.query.page) || 1);
         const limit = 10;
