@@ -1,5 +1,6 @@
 import { Schedule } from "../../models/ScheduleModel/schedule.model.js";
 import { User } from "../../models/UserModel/user.model.js";
+import { validateWeeklySchedule } from "../../utils/HelperFunctionsForScheduleUpdate/helperSchedule.js";
 
 // Schedule creation by admin
 
@@ -55,9 +56,9 @@ export const scheduleCreation = async (req, res) => {
             schedule
         });
     } catch (error) {
-        return res.status(500).json({ 
-            success:false,
-            message: error.message 
+        return res.status(500).json({
+            success: false,
+            message: error.message
         });
     }
 };
@@ -95,9 +96,9 @@ export const facultySchedule = async (req, res) => {
             schedule
         });
     } catch (error) {
-        return res.status(500).json({ 
-            success:false,
-            message: error.message 
+        return res.status(500).json({
+            success: false,
+            message: error.message
         });
     }
 };
@@ -106,8 +107,8 @@ export const facultySchedule = async (req, res) => {
 
 export const updateSchedule = async (req, res) => {
     try {
-        const user=req.dbUser;
-        
+        const user = req.dbUser;
+
         const { facultyID, weeklySchedule } = req.body;
 
         if (!facultyID || !weeklySchedule)
@@ -122,7 +123,7 @@ export const updateSchedule = async (req, res) => {
                 message: "Weekly schedule cannot be empty"
             });
 
-        if (user.role !== "admin" && user._id.toString()!==facultyID)
+        if (user.role !== "admin" && user._id.toString() !== facultyID)
             return res.status(403).json({
                 success: false,
                 message: "You are not authorized to update schedule"
@@ -137,6 +138,14 @@ export const updateSchedule = async (req, res) => {
                 message: "Duplicate days are not allowed"
             });
 
+        const validationError = validateWeeklySchedule(weeklySchedule);
+
+        if (validationError)
+            return res.status(400).json({
+                success: false,
+                message: validationError
+            });
+
         const existingSchedule = await Schedule.findOne({ faculty: facultyID });
 
         if (!existingSchedule)
@@ -147,9 +156,7 @@ export const updateSchedule = async (req, res) => {
 
         const existing = existingSchedule.toObject().weeklySchedule;
 
-        const isSame =
-            JSON.stringify(existing) ===
-            JSON.stringify(weeklySchedule);
+        const isSame = JSON.stringify(existing) === JSON.stringify(weeklySchedule);
 
         if (isSame)
             return res.status(200).json({
@@ -167,9 +174,9 @@ export const updateSchedule = async (req, res) => {
             schedule: existingSchedule
         });
     } catch (error) {
-        return res.status(500).json({ 
-            success:false,
-            message: error.message 
+        return res.status(500).json({
+            success: false,
+            message: error.message
         });
     }
 };
