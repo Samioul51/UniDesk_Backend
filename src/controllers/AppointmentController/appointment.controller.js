@@ -505,3 +505,54 @@ export const getAppointment = async (req, res) => {
     }
 };
 
+// Faculty current week appointments
+
+export const getFacultyWeeklyApprovedAppointments = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const faculty = req.dbUser;
+
+        if (id.toString() !== faculty._id.toString())
+            return res.status(403).json({
+                success: false,
+                message: "You can only see your own appointments"
+            });
+
+        const now = new Date();
+
+        // Sunday = 0
+
+        const day = now.getDay(); 
+        const sunday = new Date(now);
+        sunday.setDate(now.getDate() - day);
+        sunday.setHours(0, 0, 0, 0);
+
+        const thursday = new Date(sunday);
+        thursday.setDate(sunday.getDate() + 4);
+        thursday.setHours(23, 59, 59, 999);
+
+        const appointments = await Appointment.find({
+            faculty: faculty._id,
+            status: "approved",
+            startTime: {
+                $gte: sunday,
+                $lte: thursday
+            }
+        }).sort({ startTime: 1 }).populate("student", "name email");
+
+        return res.status(200).json({
+            success: true,
+            appointments,
+            weekRange: {
+                start: sunday,
+                end: thursday
+            }
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+

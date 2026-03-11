@@ -1,5 +1,5 @@
 import express from "express";
-import { bookAppointment, getAppointment, getFacultyAppointments, getStudentAppointments,updateAppointmentStatus } from "../controllers/AppointmentController/appointment.controller.js";
+import { bookAppointment, getAppointment, getFacultyAppointments, getFacultyWeeklyApprovedAppointments, getStudentAppointments,updateAppointmentStatus } from "../controllers/AppointmentController/appointment.controller.js";
 import { verifyFirebaseToken } from "../middlewares/Auth/auth.middleware.js";
 import { verifyRole } from "../middlewares/Role/role.middleware.js";
 
@@ -12,6 +12,10 @@ router.post("/appointment",verifyFirebaseToken,verifyRole(["student"]),bookAppoi
 // Get student appointments
 
 router.get("/appointment/student/:id",verifyFirebaseToken,verifyRole(["student"]),getStudentAppointments);
+
+// GET current week appointments for faculty
+
+router.get("/appointment/faculty/:id/week",verifyFirebaseToken,verifyRole(["faculty"]),getFacultyWeeklyApprovedAppointments);
 
 // Get faculty appointments
 
