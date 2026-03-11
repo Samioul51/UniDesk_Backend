@@ -176,33 +176,6 @@ export const getStudentAppointments = async (req, res) => {
                 message: "You can only see your own appointments"
             });
 
-        const now = new Date();
-
-        await Appointment.updateMany(
-            {
-                student: student._id,
-                status: "approved",
-                endTime: { $lt: now }
-            },
-            {
-                $set: { status: "completed" }
-            }
-        );
-
-        await Appointment.updateMany(
-            {
-                student: student._id,
-                status: "pending",
-                endTime: { $lt: now }
-            },
-            {
-                $set: {
-                    status: "rejected",
-                    rejectionReason: "Appointment request expired"
-                }
-            }
-        );
-
         const appointments = await Appointment.find({ student: student._id }).sort({ startTime: -1 }).populate("faculty", "name email room");
 
         return res.status(200).json({
@@ -230,46 +203,13 @@ export const getFacultyAppointments = async (req, res) => {
         if (id.toString() !== faculty._id.toString())
             return res.status(403).json({
                 success: false,
-                message: "You can see your own appointments"
+                message: "You can only see your own appointments"
             });
-
-        const now = new Date();
-
-        await Appointment.updateMany(
-            {
-                faculty: faculty._id,
-                status: "approved",
-                endTime: { $lt: now }
-            },
-            {
-                $set: { status: "completed" }
-            }
-        );
-
-        await Appointment.updateMany(
-            {
-                faculty: faculty._id,
-                status: "pending",
-                endTime: { $lt: now }
-            },
-            {
-                $set: {
-                    status: "rejected",
-                    rejectionReason: "Appointment request expired"
-                }
-            }
-        );
 
         const page = Math.max(1, parseInt(req.query.page) || 1);
         const limit = 10;
         const skip = (page - 1) * limit;
-
         const status = req.query.status;
-
-        const filter = {
-            faculty: faculty._id,
-            status: { $in: ["pending", "approved", "completed"] }
-        };
 
         const allowedStatuses = ["pending", "approved", "completed"];
 
@@ -279,12 +219,45 @@ export const getFacultyAppointments = async (req, res) => {
                 message: "Invalid appointment status"
             });
 
-        if (status)
-            filter.status = status;
+        const baseFilter = {
+            faculty: faculty._id,
+            status: { $in: allowedStatuses }
+        };
 
-        const appointments = await Appointment.find(filter).sort({ startTime: -1 }).skip(skip).limit(limit).populate("student", "name email");
+        const listFilter = status ? { ...baseFilter, status } : baseFilter;
 
-        const totalAppointments = await Appointment.countDocuments(filter);
+        const [
+            appointments,
+            totalAppointments,
+            totalPending,
+            totalApproved,
+            totalCompleted,
+            uniqueStudents
+        ] = await Promise.all([
+            Appointment.find(listFilter).sort({ startTime: -1 }).skip(skip).limit(limit).populate("student", "name email"),
+
+            Appointment.countDocuments(listFilter),
+
+            Appointment.countDocuments({
+                faculty: faculty._id,
+                status: "pending"
+            }),
+
+            Appointment.countDocuments({
+                faculty: faculty._id,
+                status: "approved"
+            }),
+
+            Appointment.countDocuments({
+                faculty: faculty._id,
+                status: "completed"
+            }),
+
+            Appointment.distinct("student", {
+                faculty: faculty._id,
+                status: { $in: allowedStatuses }
+            })
+        ]);
 
         return res.status(200).json({
             success: true,
@@ -293,6 +266,12 @@ export const getFacultyAppointments = async (req, res) => {
                 page,
                 totalPages: Math.ceil(totalAppointments / limit),
                 totalAppointments
+            },
+            stats: {
+                pending: totalPending,
+                approved: totalApproved,
+                completed: totalCompleted,
+                students: uniqueStudents.length
             }
         });
 
