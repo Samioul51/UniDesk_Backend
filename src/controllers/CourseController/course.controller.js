@@ -364,7 +364,7 @@ export const adminAllCourses = async (req, res) => {
                 success: false,
                 message: "Only admin can access all courses"
             });
-        const courses = await Course.find();
+        const courses = await Course.find().populate("faculties", "name email photoURL").populate("students", "name email studentID");
         return res.status(200).json({
             success: true,
             courses
