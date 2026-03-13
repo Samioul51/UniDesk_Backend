@@ -56,6 +56,21 @@ const repositorySchema = new Schema({
         enum: ["pending", "approved", "rejected"],
         default: "pending"
     },
+    tags: {
+        type: [
+            {
+                type: String,
+                trim: true
+            }
+        ],
+        required: true,
+        validate: {
+            validator: function (value) {
+                return Array.isArray(value) && value.length > 0;
+            },
+            message: "At least one tag is required"
+        }
+    },
     rejectedReason: {
         type: String
     },
