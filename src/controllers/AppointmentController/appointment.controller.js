@@ -5,6 +5,7 @@ import { Supervisor } from "../../models/SupervisorModel/supervisor.model.js";
 import { createMeeting } from "../../utils/MeetLinkGeneration/meetLinkGeneration.js";
 import { notifyUsers } from "../../utils/NotificationEngine/notificationService.js";
 import { notificationTypes } from "../../constants/notificationTypes.js";
+import mongoose from "mongoose";
 
 // Appointment booking
 
@@ -176,7 +177,36 @@ export const getStudentAppointments = async (req, res) => {
                 message: "You can only see your own appointments"
             });
 
-        const appointments = await Appointment.find({ student: student._id }).sort({ startTime: -1 }).populate("faculty", "name email room");
+        const appointments = await Appointment.aggregate([
+            {
+                $match: { student: new mongoose.Types.ObjectId(student._id) }
+            },
+            {
+                $addFields: {
+                    statusPriority: {
+                        $switch: {
+                            branches: [
+                                { case: { $in: ["$status", ["pending", "approved"]] }, then: 1 },
+                                { case: { $eq: ["$status", "completed"] }, then: 2 },
+                                { case: { $in: ["$status", ["rejected", "cancelled"]] }, then: 3 }
+                            ],
+                            default: 4
+                        }
+                    }
+                }
+            },
+            {
+                $sort: {
+                    statusPriority: 1,
+                    startTime: 1
+                }
+            }
+        ]);
+
+        await Appointment.populate(appointments, {
+            path: "faculty",
+            select: "name email room"
+        });
 
         return res.status(200).json({
             success: true,
@@ -226,6 +256,33 @@ export const getFacultyAppointments = async (req, res) => {
 
         const listFilter = status ? { ...baseFilter, status } : baseFilter;
 
+        const pipeline = [
+            {
+                $match: listFilter
+            },
+            {
+                $addFields: {
+                    statusPriority: {
+                        $switch: {
+                            branches: [
+                                { case: { $in: ["$status", ["pending", "approved"]] }, then: 1 },
+                                { case: { $eq: ["$status", "completed"] }, then: 2 }
+                            ],
+                            default: 3
+                        }
+                    }
+                }
+            },
+            {
+                $sort: {
+                    statusPriority: 1,
+                    startTime: 1
+                }
+            },
+            { $skip: skip },
+            { $limit: limit }
+        ];
+
         const [
             appointments,
             totalAppointments,
@@ -234,7 +291,8 @@ export const getFacultyAppointments = async (req, res) => {
             totalCompleted,
             uniqueStudents
         ] = await Promise.all([
-            Appointment.find(listFilter).sort({ startTime: -1 }).skip(skip).limit(limit).populate("student", "name email"),
+
+            Appointment.aggregate(pipeline),
 
             Appointment.countDocuments(listFilter),
 
@@ -255,9 +313,14 @@ export const getFacultyAppointments = async (req, res) => {
 
             Appointment.distinct("student", {
                 faculty: faculty._id,
-                status: { $in: allowedStatuses }
+                status: { $in: ["pending", "approved", "completed"] }
             })
         ]);
+
+        await Appointment.populate(appointments, {
+            path: "student",
+            select: "name email"
+        });
 
         return res.status(200).json({
             success: true,
@@ -522,7 +585,7 @@ export const getFacultyWeeklyApprovedAppointments = async (req, res) => {
 
         // Sunday = 0
 
-        const day = now.getDay(); 
+        const day = now.getDay();
         const sunday = new Date(now);
         sunday.setDate(now.getDate() - day);
         sunday.setHours(0, 0, 0, 0);
