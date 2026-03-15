@@ -31,7 +31,7 @@ cron.schedule("*/10 * * * *", async () => {
                     message: `Assignment "${assignment.title}" deadline is approaching.`,
                     entityID: assignment._id,
                     entityModel: "Assignment",
-                    redirectURL: `/assignments/${assignment._id}`
+                    redirectURL: `/courses/${course._id.toString()}/details`
                 });
 
                 assignment.reminderSent = true;
@@ -58,7 +58,7 @@ cron.schedule("*/10 * * * *", async () => {
                     message: "Your meeting will start in 1 hour.",
                     entityID: meeting._id,
                     entityModel: "Appointment",
-                    redirectURL: `/appointments/${meeting._id}`
+                    redirectURL: `/appointments`
                 });
 
                 meeting.reminderSent = true;

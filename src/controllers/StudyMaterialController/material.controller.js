@@ -62,7 +62,7 @@ export const uploadMaterial = async (req, res) => {
                     message: `${title} has been uploaded.`,
                     entityID: material._id,
                     entityModel: "Material",
-                    redirectURL: `/materials/${material._id}`
+                    redirectURL: `/courses/${id.toString()}/details`
                 });
             } catch (error) {
                 console.error(error.message);

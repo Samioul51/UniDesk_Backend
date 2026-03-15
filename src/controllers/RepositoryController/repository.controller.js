@@ -63,7 +63,7 @@ export const itemUpload = async (req, res) => {
                     title: "New Contribution Pending",
                     message: "A new repository item needs review.",
                     entityModel: "Repository",
-                    redirectURL: "/admin/repository"
+                    redirectURL: "/repository"
                 });
             } catch (error) {
                 console.error(error.message);
@@ -256,7 +256,7 @@ export const itemStatusUpdate = async (req, res) => {
                     message: "Your uploaded item has been approved.",
                     entityID: updatedItem._id,
                     entityModel: "Repository",
-                    redirectURL: `/repository/${updatedItem._id}`
+                    redirectURL: "/repository"
                 });
             } catch (error) {
                 console.error(error.message);
@@ -273,7 +273,7 @@ export const itemStatusUpdate = async (req, res) => {
                     message: "Your uploaded item was rejected.",
                     entityID: updatedItem._id,
                     entityModel: "Repository",
-                    redirectURL: `/repository/${updatedItem._id}`
+                    redirectURL: "/repository"
                 });
             } catch (error) {
                 console.error(error.message);

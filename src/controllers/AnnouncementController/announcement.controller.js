@@ -72,7 +72,7 @@ export const createAnnouncement = async (req, res) => {
                     message: `${title}`,
                     entityID: result._id,
                     entityModel: "Announcement",
-                    redirectURL: `/announcements/${result._id}`
+                    redirectURL: `/courses/${course.toString()}/details`
                 });
             } catch (error) {
                 console.error(error.message);
@@ -207,7 +207,7 @@ export const updateAnnouncement = async (req, res) => {
                     message: `${updatedAnnouncement.title} has been updated.`,
                     entityID: announcementID,
                     entityModel: "Announcement",
-                    redirectURL: `/announcements/${announcementID}`
+                    redirectURL: `/courses/${courseID.toString()}/details`
                 });
             } catch (error) {
                 console.error(error.message);

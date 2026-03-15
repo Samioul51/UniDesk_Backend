@@ -116,7 +116,7 @@ export const uploadAssignment = async (req, res) => {
                 message: `${createdAssignment.title} has been posted.`,
                 entityID: createdAssignment._id,
                 entityModel: "Assignment",
-                redirectURL: `/assignments/${createdAssignment._id}`
+                redirectURL: `/courses/${id.toString()}/details`
             });
         } catch (error) {
             console.error(error.message);
@@ -381,7 +381,7 @@ export const updateAssignment = async (req, res) => {
                     message: `Assignment "${updatedAssignment.title}" has been updated.`,
                     entityID: updatedAssignment._id,
                     entityModel: "Assignment",
-                    redirectURL: `/assignments/${updatedAssignment._id}`
+                    redirectURL: `/courses/${course._id.toString()}/details`
                 });
             } catch (error) {
                 console.error(error.message);
@@ -623,7 +623,7 @@ export const gradeSubmission = async (req, res) => {
                 message: `Your submission for "${assignment.title}" has been graded.`,
                 entityID: assignment._id,
                 entityModel: "Assignment",
-                redirectURL: `/assignments/${assignment._id}`
+                redirectURL: `/courses/${course._id.toString()}/details`
             });
         } catch (error) {
             console.error(error.message);

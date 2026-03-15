@@ -144,7 +144,7 @@ export const bookAppointment = async (req, res) => {
                 message: `${student.name} requested a meeting.`,
                 entityID: appointment._id,
                 entityModel: "Appointment",
-                redirectURL: `/appointments/${appointment._id}`
+                redirectURL: `/appointments`
             });
         } catch (error) {
             console.error(error.message);
@@ -402,7 +402,7 @@ export const updateAppointmentStatus = async (req, res) => {
                     message: "Student requested to cancel the appointment.",
                     entityID: appointment._id,
                     entityModel: "Appointment",
-                    redirectURL: `/appointments/${appointment._id}`
+                    redirectURL: `/appointments`
                 });
             } catch (error) {
                 console.error(error.message);
@@ -507,7 +507,7 @@ export const updateAppointmentStatus = async (req, res) => {
                     message: `Your appointment is now ${appointment.status}.`,
                     entityID: appointment._id,
                     entityModel: "Appointment",
-                    redirectURL: `/appointments/${appointment._id}`
+                    redirectURL: `/appointments`
                 });
             } catch (error) {
                 console.error(error.message);
