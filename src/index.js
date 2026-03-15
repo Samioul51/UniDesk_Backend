@@ -22,6 +22,7 @@ export const io = new Server(server, {
 });
 
 const onlineUsers = new Set();
+const disconnectTimeouts=new Map();
 
 io.on("connection", (socket) => {
     // console.log("User connected: ",socket.id);
@@ -31,6 +32,12 @@ io.on("connection", (socket) => {
     socket.on("join", (userID) => {
         socket.join(userID);
         socket.userID = userID;
+
+        if(disconnectTimeouts.has(userID)){
+            clearTimeout(disconnectTimeouts.get(userID));
+            disconnectTimeouts.delete(userID);
+        }
+
         onlineUsers.add(userID);
         io.emit("userOnline", userID);
         console.log("User joined room: ", userID);
@@ -59,8 +66,13 @@ io.on("connection", (socket) => {
 
     socket.on("disconnect", () => {
         if (socket.userID) {
-            onlineUsers.delete(socket.userID);
-            io.emit("userOffline", socket.userID);
+            const timeout=setTimeout(()=>{
+                onlineUsers.delete(socket.userID);
+                io.emit("userOffline", socket.userID);
+                disconnectTimeouts.delete(socket.userID);
+            },3000);
+
+            disconnectTimeouts.set(socket.userID, timeout);
         }
         // console.log("User disconnected: ",socket.id);
     });
