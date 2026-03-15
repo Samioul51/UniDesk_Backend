@@ -614,3 +614,27 @@ export const adminDeleteUser = async (req, res) => {
         });
     }
 };
+
+// Get user by id for public access
+
+export const getUserByID = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id).select("name email photoURL role department");
+
+        if (!user)
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+
+        return res.status(200).json({ 
+            success: true, 
+            user 
+        });
+    } catch (error) {
+        return res.status(500).json({ 
+            success: false, 
+            message: error.message 
+        });
+    }
+};
