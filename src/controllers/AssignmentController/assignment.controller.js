@@ -786,7 +786,7 @@ export const requestRecheckSubmission = async (req, res) => {
                 sender: student._id,
                 type: notificationTypes.newAssignment,
                 title: "Recheck Requested",
-                message: `${student.name} requested a recheck.`,
+                message: `${student.studentID} requested a recheck.`,
                 entityID: submission._id,
                 entityModel: "Assignment",
                 redirectURL: `/courses/${course._id.toString()}/details`

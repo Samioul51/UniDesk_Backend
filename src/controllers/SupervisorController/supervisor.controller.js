@@ -3,6 +3,7 @@ import { User } from "../../models/UserModel/user.model.js";
 import { Appointment } from "../../models/AppointmentModel/appointment.model.js";
 import { notifyUsers } from "../../utils/NotificationEngine/notificationService.js";
 import { notificationTypes } from "../../constants/notificationTypes.js";
+import { formatName } from "../../utils/FormatName/formatName.js";
 
 // Assigning supervisee
 
@@ -83,7 +84,7 @@ export const assignSupervisee = async (req, res) => {
                 receivers: [studentID],
                 sender: supervisorID,
                 type: notificationTypes.supervisorAssigned,
-                title: `You have been assigned ${supervisor.name} as your supervisor.`,
+                title: `You have been assigned ${formatName(supervisor.name)} as your supervisor.`,
                 message: "You have been assigned a supervisor.",
                 entityModel: "Supervisor",
                 redirectURL: "/supervisor"
@@ -94,7 +95,7 @@ export const assignSupervisee = async (req, res) => {
                 sender: user._id,
                 type: notificationTypes.supervisorAssigned,
                 title: "New Supervisee Assigned",
-                message: `${student.name} has been assigned to you as a supervisee.`,
+                message: `${formatName(student.name)} has been assigned to you as a supervisee.`,
                 entityModel: "Supervisor",
                 redirectURL: "/supervisor"
             });
