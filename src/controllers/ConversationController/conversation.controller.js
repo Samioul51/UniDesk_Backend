@@ -3,6 +3,7 @@ import { io } from "../../index.js";
 import { Conversation } from "../../models/ConversationModel/conversation.model.js";
 import { Message } from "../../models/MessageModel/message.model.js";
 import { User } from "../../models/UserModel/user.model.js";
+import { formatName } from "../../utils/FormatName/formatName.js";
 import { notifyUsers } from "../../utils/NotificationEngine/notificationService.js";
 import mongoose from "mongoose";
 
@@ -333,7 +334,7 @@ export const sendMessage = async (req, res) => {
             sender: senderID,
             type: notificationTypes.newMessage,
             title: "New Message",
-            message: `${sender.name} sent you a message`,
+            message: `${formatName(sender.name)} sent you a message`,
             entityID: conversation._id,
             entityModel: "Conversation",
             redirectURL: `/chat/${conversation._id}`
