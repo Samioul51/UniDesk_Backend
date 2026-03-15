@@ -1,5 +1,5 @@
 import express from "express";
-import { adminDeleteUser, adminUpdateProfile, createUser, getSingleUser, getUsers, updateProfile } from "../controllers/UserController/user.controller.js";
+import { adminDeleteUser, adminUpdateProfile, createUser, getSingleUser, getUserByID, getUsers, updateProfile } from "../controllers/UserController/user.controller.js";
 import { verifyFirebaseToken } from "../middlewares/Auth/auth.middleware.js";
 import { verifyRole } from "../middlewares/Role/role.middleware.js";
 
@@ -13,6 +13,10 @@ router.post("/users",verifyFirebaseToken,createUser);
 // All users data
 
 router.get("/admin/users",verifyFirebaseToken,verifyRole(["admin"]),getUsers);
+
+// Single user data for public access
+
+router.get("/users/id/:id", verifyFirebaseToken, getUserByID);
 
 // Single user data
 

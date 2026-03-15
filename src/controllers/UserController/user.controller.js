@@ -1,6 +1,7 @@
 import { User } from "../../models/UserModel/user.model.js";
 import mongoose from "mongoose";
 import { deleteFromCloudinary } from "../../utils/DeleteFromCloudinary/deleteFromCloudinary.js";
+import { auth } from "../../utils/Firebase/firebase.js"
 
 // User creation
 
@@ -291,9 +292,9 @@ export const createUser = async (req, res) => {
         });
     }
     catch (error) {
-        return res.status(500).json({ 
-            success:false,
-            message: error.message 
+        return res.status(500).json({
+            success: false,
+            message: error.message
         });
     }
 };
@@ -341,9 +342,9 @@ export const getUsers = async (req, res) => {
         });
     }
     catch (error) {
-        return res.status(500).json({ 
-            success:false,
-            message: error.message 
+        return res.status(500).json({
+            success: false,
+            message: error.message
         });
     }
 };
@@ -373,9 +374,9 @@ export const getSingleUser = async (req, res) => {
             user
         });
     } catch (error) {
-        return res.status(500).json({ 
-            success:false,
-            message: error.message 
+        return res.status(500).json({
+            success: false,
+            message: error.message
         });
     }
 };
@@ -455,9 +456,9 @@ export const updateProfile = async (req, res) => {
             user
         });
     } catch (error) {
-        return res.status(500).json({ 
-            success:false,
-            message: error.message 
+        return res.status(500).json({
+            success: false,
+            message: error.message
         });
     }
 };
@@ -474,9 +475,9 @@ export const adminUpdateProfile = async (req, res) => {
                 message: "User email is required"
             });
 
-        const user=await User.findOne({email:email});
+        const user = await User.findOne({ email: email });
 
-        if(!user)
+        if (!user)
             return res.status(404).json({
                 success: false,
                 message: "User not found"
@@ -553,9 +554,9 @@ export const adminUpdateProfile = async (req, res) => {
             user: updatedUser
         });
     } catch (error) {
-        return res.status(500).json({ 
-            success:false,
-            message: error.message 
+        return res.status(500).json({
+            success: false,
+            message: error.message
         });
     }
 };
@@ -580,6 +581,18 @@ export const adminDeleteUser = async (req, res) => {
                 message: "Admin users cannot be deleted"
             });
 
+        try {
+            const firebaseUser = await auth.getUserByEmail(email);
+
+            await auth.deleteUser(firebaseUser.uid);
+        } catch (error) {
+            if (error.code !== "auth/user-not-found")
+                return res.status(500).json({
+                    success: false,
+                    message: "Failed to delete user"
+                });
+        }
+
         if (user.photoId) {
             try {
                 await deleteFromCloudinary(user.photoId);
@@ -595,8 +608,32 @@ export const adminDeleteUser = async (req, res) => {
             message: "User permanently deleted"
         });
     } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+// Get user by id for public access
+
+export const getUserByID = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id).select("name email photoURL role department");
+
+        if (!user)
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+
+        return res.status(200).json({ 
+            success: true, 
+            user 
+        });
+    } catch (error) {
         return res.status(500).json({ 
-            success:false,
+            success: false, 
             message: error.message 
         });
     }

@@ -10,7 +10,7 @@ import { notifyUsers } from "../../utils/NotificationEngine/notificationService.
 
 export const itemUpload = async (req, res) => {
     try {
-        const { title, courseCode, courseName, year, semester, itemType, url, description, cloudinaryId, resourceType } = req.body;
+        const { title, courseCode, courseName, year, semester, itemType, url, description, cloudinaryId, resourceType, tags } = req.body;
 
         const uploader = req.dbUser._id;
 
@@ -26,6 +26,17 @@ export const itemUpload = async (req, res) => {
                 message: "Invalid resource type"
             });
 
+        const cleanedTags = Array.isArray(tags) ?
+            tags.map(tag => String(tag).trim()).filter(Boolean)
+            :
+            [];
+
+        if (cleanedTags.length === 0)
+            return res.status(400).json({
+                success: false,
+                message: "At least one valid tag is required"
+            });
+
         const item = await Repository.create({
             title,
             courseCode,
@@ -35,6 +46,7 @@ export const itemUpload = async (req, res) => {
             itemType,
             url,
             cloudinaryId,
+            tags:cleanedTags,
             resourceType,
             uploader,
             description
@@ -103,7 +115,7 @@ export const getItems = async (req, res) => {
         }
         const skip = (page - 1) * limit;
 
-        const items = await Repository.find(filter).populate("uploader", "name").sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
+        const items = await Repository.find(filter).populate("uploader", "name email photoURL").sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
 
         const total = await Repository.countDocuments(filter);
 
@@ -128,7 +140,7 @@ export const getSingleItem = async (req, res) => {
     try {
         const id = req.params.id;
 
-        const item = await Repository.findById(id);
+        const item = await Repository.findById(id).populate("uploader", "name email photoURL");
 
         if (!item)
             return res.status(404).json({
@@ -200,8 +212,8 @@ export const itemStatusUpdate = async (req, res) => {
 
         if (status === "approved") {
             updatedData.approvedBy = admin._id;
-            updatedData.approvedAt = new Date(),
-                updatedData.rejectedReason = null;
+            updatedData.approvedAt = new Date();
+            updatedData.rejectedReason = null;
         }
 
         if (status === "rejected") {
@@ -287,7 +299,7 @@ export const getLeaderboard = async (req, res) => {
     try {
         const userID = req.dbUser?._id;
 
-        const topUsers = await Leaderboard.find().populate("user", "name studentID")
+        const topUsers = await Leaderboard.find().populate("user", "name photoURL")
             .sort({ totalPoints: -1 }).limit(10);
 
         const rankedTopUsers = topUsers.map((entry, index) => ({

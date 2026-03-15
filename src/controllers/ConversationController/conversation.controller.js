@@ -4,6 +4,7 @@ import { Conversation } from "../../models/ConversationModel/conversation.model.
 import { Message } from "../../models/MessageModel/message.model.js";
 import { User } from "../../models/UserModel/user.model.js";
 import { notifyUsers } from "../../utils/NotificationEngine/notificationService.js";
+import mongoose from "mongoose";
 
 // Creating conversation
 
@@ -25,6 +26,7 @@ export const createConversation = async (req, res) => {
             });
 
         const receiver = await User.findById(receiverID);
+        console.log("receiver found:", receiver?._id);
 
         if (!receiver)
             return res.status(404).json({
@@ -32,9 +34,21 @@ export const createConversation = async (req, res) => {
                 message: "Receiver not found"
             });
 
-        const participants = [senderID, receiverID].sort();
+        const senderObjId = new mongoose.Types.ObjectId(senderID);
+        const receiverObjId = new mongoose.Types.ObjectId(receiverID);
 
-        let conversation = await Conversation.findOne({ participants }).populate("participants", "name email");
+        let conversation = await Conversation.findOne({
+            participants: {
+                $all: [senderObjId, receiverObjId],
+                $size: 2
+            }
+        }).populate("participants", "name email");
+
+        console.log("existing conversation:", conversation?._id);
+
+        console.log("senderID:", senderID);
+        console.log("receiverID:", receiverID);
+        console.log("body:", req.body);
 
         if (conversation)
             return res.status(200).json({
@@ -43,14 +57,21 @@ export const createConversation = async (req, res) => {
                 conversation
             });
 
-        conversation = await Conversation.create({ participants });
+        conversation = await Conversation.create({
+            participants: [senderObjId, receiverObjId]
+        });
+
+        conversation = await Conversation.findById(conversation._id)
+            .populate("participants", "name email");
 
         return res.status(201).json({
             success: true,
             message: "Conversation created successfully",
             conversation
         });
+
     } catch (error) {
+        console.error("createConversation ERROR:", error.message);
         return res.status(500).json({
             success: false,
             message: error.message
@@ -58,31 +79,114 @@ export const createConversation = async (req, res) => {
     }
 };
 
-// User conversations
+// User Conversations
 
 export const getUserConversations = async (req, res) => {
     try {
-        const id = req.params.id;
-
         const user = req.dbUser;
+        const search = req.query.search?.trim();
 
-        if (id.toString() !== user._id.toString())
-            return res.status(403).json({
-                success: false,
-                message: "You are not authorized to get conversations"
+        const page = Math.max(parseInt(req.query.page) || 1, 1);
+        const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+        const skip = (page - 1) * limit;
+
+        // Inbox mode
+
+        if (!search) {
+            const conversations = await Conversation.find({
+                participants: user._id // Current user must be a participant
+            }).populate("participants", "name email role department photoURL").populate("lastMessage").sort({ updatedAt: -1 }).skip(skip).limit(limit);
+
+            const results = await Promise.all(conversations.map(async conversation => {
+                const otherUser = conversation.participants.find(
+                    p => p._id.toString() !== user._id.toString()
+                );
+
+                const unreadCount = await Message.countDocuments({
+                    conversation: conversation._id,
+                    sender: { $ne: user._id },
+                    read: false
+                });
+
+                return {
+                    user: otherUser,
+                    conversationID: conversation._id,
+                    lastMessage: conversation.lastMessage?.content || null,
+                    lastMessageSenderID: conversation.lastMessage?.sender?.toString() || null,
+                    updatedAt: conversation.updatedAt,
+                    unreadCount
+                };
+            }));
+
+            return res.status(200).json({ 
+                success: true, 
+                mode: "inbox", 
+                count: results.length, 
+                users: results 
             });
+        }
 
-        const conversations = await Conversation.find({ participants: { $in: [id] } }).populate("participants", "name email").populate("lastMessage").sort({ updatedAt: -1 });
+        // Filtering by regular expression
 
-        return res.status(200).json({
-            success: true,
-            count: conversations.length,
-            conversations
+        const cleanSearch = search.replace(/[\s.]/g, "");
+        const fuzzyPattern = cleanSearch.split("").join("[.\\s]*");
+        const searchRegex = new RegExp(fuzzyPattern, "i");
+
+        let roleFilter = {};
+        if (user.role.toLowerCase() === "student") 
+            roleFilter.role = "faculty";
+        if (user.role.toLowerCase() === "faculty") 
+            roleFilter.role = { $in: ["student", "faculty"] };
+
+        const users = await User.find({
+            ...roleFilter,
+            _id: { $ne: user._id },
+            $or: [
+                { name: searchRegex },
+                { email: new RegExp(search, "i") }
+            ]
+        }).select("name email role department photoURL");
+
+
+        const userIDs = users.map(u => u._id);
+
+        const conversations = await Conversation.find({
+            $and: [
+                { participants: user._id },
+                { participants: { $in: userIDs } }
+            ]
+        }).populate("lastMessage");
+
+        const conversationMap = {};
+        conversations.forEach(conversation => {
+            const otherUser = conversation.participants.find(
+                p => p.toString() !== user._id.toString()
+            );
+            
+            if (otherUser) 
+                conversationMap[otherUser.toString()] = conversation;
         });
+
+        const results = users.map(u => {
+            const conversation = conversationMap[u._id.toString()];
+            return {
+                user: u,
+                conversationID: conversation ? conversation._id : null,
+                lastMessage: conversation?.lastMessage?.content || null
+            };
+        });
+
+        return res.status(200).json({ 
+            success: true, 
+            mode: "search", 
+            count: results.length, 
+            users: results 
+        });
+
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message
+        return res.status(500).json({ 
+            success: false, 
+            message: error.message 
         });
     }
 };
@@ -132,7 +236,8 @@ export const getMessages = async (req, res) => {
 
         const userID = req.dbUser._id;
 
-        const { page = 1, limit = 10 } = req.query;
+        const page = Math.max(parseInt(req.query.page) || 1, 1);
+        const limit = Math.min(parseInt(req.query.limit) || 10, 50);
         const skip = (page - 1) * limit;
 
         const conversation = await Conversation.findById(id);
@@ -209,11 +314,10 @@ export const sendMessage = async (req, res) => {
             content
         });
 
-        conversation.lastMessage = message._id;
-
-        await conversation.save();
-
-        const populatedMessage = await Message.findById(message._id).populate("sender", "name email");
+        const [populatedMessage] = await Promise.all([
+            Message.findById(message._id).populate("sender", "name email photoURL"),
+            Conversation.findByIdAndUpdate(conversationID, { lastMessage: message._id })
+        ]);
 
         const receiverID = conversation.participants.find(
             p => p.toString() !== senderID.toString()
@@ -223,20 +327,17 @@ export const sendMessage = async (req, res) => {
 
         io.to(senderID.toString()).emit("newMessage", populatedMessage);
 
-        try {
-            await notifyUsers({
-                receivers: [receiverID],
-                sender: senderID,
-                type: notificationTypes.newMessage,
-                title: "New Message",
-                message: `${sender.name} sent you a message`,
-                entityID: conversation._id,
-                entityModel: "Conversation",
-                redirectURL: `/chat/${conversation._id}`
-            });
-        } catch (error) {
-            console.error(error.message);
-        }
+
+        notifyUsers({
+            receivers: [receiverID],
+            sender: senderID,
+            type: notificationTypes.newMessage,
+            title: "New Message",
+            message: `${sender.name} sent you a message`,
+            entityID: conversation._id,
+            entityModel: "Conversation",
+            redirectURL: `/chat/${conversation._id}`
+        }).catch(err => console.error(err));
 
         return res.status(201).json({
             success: true,
