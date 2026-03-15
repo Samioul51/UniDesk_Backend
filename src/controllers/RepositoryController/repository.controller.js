@@ -212,8 +212,8 @@ export const itemStatusUpdate = async (req, res) => {
 
         if (status === "approved") {
             updatedData.approvedBy = admin._id;
-            updatedData.approvedAt = new Date(),
-                updatedData.rejectedReason = null;
+            updatedData.approvedAt = new Date();
+            updatedData.rejectedReason = null;
         }
 
         if (status === "rejected") {
