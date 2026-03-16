@@ -1,5 +1,5 @@
 import express from "express";
-import { getNotifications, getUnreadCount, markAllAsRead, markOneAsRead } from "../controllers/NotificationController/notification.controller.js";
+import { getNotifications, getUnreadCount, markAllAsRead, markConversationNotificationsRead, markOneAsRead } from "../controllers/NotificationController/notification.controller.js";
 import { verifyFirebaseToken } from "../middlewares/Auth/auth.middleware.js";
 import { verifyRole } from "../middlewares/Role/role.middleware.js";
 
@@ -16,6 +16,10 @@ router.get("/notifications/unread",verifyFirebaseToken,verifyRole(["admin","facu
 // Mark all as read
 
 router.patch("/notifications/all",verifyFirebaseToken,verifyRole(["admin","faculty","student"]),markAllAsRead);
+
+// Conversation notification read
+
+router.patch("/notifications/conversation/:conversationID", verifyFirebaseToken,verifyRole(["faculty","student"]), markConversationNotificationsRead);
 
 // Mark as read
 

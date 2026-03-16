@@ -108,3 +108,29 @@ export const markAllAsRead = async (req, res) => {
     }
 };
 
+// Conversation notification read
+
+export const markConversationNotificationsRead = async (req, res) => {
+    try {
+        const conversationID = req.params.conversationID;
+        const userID = req.dbUser._id;
+
+        await Notification.updateMany({
+            receiver: userID,
+            redirectURL: `/chat/${conversationID}`,
+            isRead: false
+        }, {
+            $set: { isRead: true }
+        });
+
+        return res.status(200).json({ 
+            success: true,
+            message:"Notification read successfully" 
+        });
+    } catch (error) {
+        return res.status(500).json({ 
+            success: false, 
+            message: error.message 
+        });
+    }
+};
