@@ -478,6 +478,21 @@ export const submitAssignment = async (req, res) => {
             resourceType
         });
 
+        try {
+            await notifyUsers({
+                receivers: course.faculties,
+                sender: student._id,
+                type: notificationTypes.newAssignment,
+                title: "New Submission",
+                message: `${student.studentID} submitted "${assignment.title}".`,
+                entityID: submission._id,
+                entityModel: "Assignment",
+                redirectURL: `/courses/${course._id.toString()}/details`
+            });
+        } catch (error) {
+            console.error(error.message);
+        }
+
         return res.status(200).json({
             success: true,
             message: "Assignment submitted successfully",
@@ -762,6 +777,24 @@ export const requestRecheckSubmission = async (req, res) => {
 
         await submission.save();
 
+        const assignment = await Assignment.findById(submission.assignment);
+        const course = await Course.findById(assignment.course).select("faculties");
+
+        try {
+            await notifyUsers({
+                receivers: course.faculties,
+                sender: student._id,
+                type: notificationTypes.newAssignment,
+                title: "Recheck Requested",
+                message: `${student.studentID} requested a recheck.`,
+                entityID: submission._id,
+                entityModel: "Assignment",
+                redirectURL: `/courses/${course._id.toString()}/details`
+            });
+        } catch (error) {
+            console.error(error.message);
+        }
+
         return res.status(200).json({
             success: true,
             message: "Recheck request submitted successfully",
@@ -841,6 +874,21 @@ export const resolveRecheckSubmission = async (req, res) => {
         submission.gradedBy = faculty._id;
 
         await submission.save();
+
+        try {
+            await notifyUsers({
+                receivers: [submission.student],
+                sender: faculty._id,
+                type: notificationTypes.gradePublished,
+                title: "Recheck Resolved",
+                message: `Your recheck request has been resolved.`,
+                entityID: submission.assignment._id,
+                entityModel: "Assignment",
+                redirectURL: `/courses/${submission.course.toString()}/details`
+            });
+        } catch (error) {
+            console.error(error.message);
+        }
 
         return res.status(200).json({
             success: true,
