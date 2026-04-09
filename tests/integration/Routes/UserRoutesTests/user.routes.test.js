@@ -13,7 +13,7 @@ import {
 import {
     clearTestDB,
     connectTestDB,
-    disconnectTestDB,
+    disconnectTestDB
 } from "../../setup/setupTestDB.js";
 
 const verifyIdTokenMock = jest.fn();

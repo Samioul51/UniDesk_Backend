@@ -3,7 +3,7 @@ import request from "supertest";
 import {
     connectTestDB,
     clearTestDB,
-    disconnectTestDB,
+    disconnectTestDB
 } from "../../setup/setupTestDB.js";
 import {
     adminEmail,
@@ -11,7 +11,7 @@ import {
     buildFaculty,
     buildStudent,
     facultyEmail,
-    studentEmail,
+    studentEmail
 } from "../../helpers/userSeed.js";
 
 const verifyIdTokenMock = jest.fn();
