@@ -105,8 +105,6 @@ describe("Repository Routes Integration", () => {
     });
 
     it("GET /api/repository returns approved items for public access", async () => {
-        await User.create(buildStudent());
-
         const student = await User.create(buildStudent());
 
         await Repository.create({

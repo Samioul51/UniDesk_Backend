@@ -81,7 +81,8 @@ describe("Assignment Routes Integration", () => {
             department: "cse",
             faculties: [faculty._id],
             students: [student._id],
-            invitationCode: "join123abc45"
+            invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-assignment-1"
         });
 
         const res = await request(app).post(`/api/course/${course._id}/assignment`).set(authHeader()).send({
@@ -115,7 +116,8 @@ describe("Assignment Routes Integration", () => {
             department: "cse",
             faculties: [faculty._id],
             students: [student._id],
-            invitationCode: "join123abc45"
+            invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-assignment-2"
         });
 
         const assignment = await Assignment.create({
@@ -148,7 +150,8 @@ describe("Assignment Routes Integration", () => {
             semester: "2nd",
             department: "cse",
             faculties: [faculty._id],
-            invitationCode: "join123abc45"
+            invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-assignment-3"
         });
 
         const assignment = await Assignment.create({
@@ -186,6 +189,7 @@ describe("Assignment Routes Integration", () => {
             faculties: [faculty._id],
             students: [student._id],
             invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-assignment-4",
         });
 
         const assignment = await Assignment.create({
@@ -227,7 +231,8 @@ describe("Assignment Routes Integration", () => {
             department: "cse",
             faculties: [faculty._id],
             students: [student._id],
-            invitationCode: "join123abc45"
+            invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-assignment-5"
         });
 
         const assignment = await Assignment.create({
@@ -275,6 +280,7 @@ describe("Assignment Routes Integration", () => {
             faculties: [faculty._id],
             students: [student._id],
             invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-assignment-6",
         });
 
         const assignment = await Assignment.create({
@@ -323,7 +329,8 @@ describe("Assignment Routes Integration", () => {
             department: "cse",
             faculties: [faculty._id],
             students: [student._id],
-            invitationCode: "join123abc45"
+            invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-assignment-7"
         });
 
         const assignment = await Assignment.create({
@@ -370,7 +377,8 @@ describe("Assignment Routes Integration", () => {
             department: "cse",
             faculties: [faculty._id],
             students: [student._id],
-            invitationCode: "join123abc45"
+            invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-assignment-8"
         });
 
         const assignment = await Assignment.create({
@@ -419,7 +427,8 @@ describe("Assignment Routes Integration", () => {
             department: "cse",
             faculties: [faculty._id],
             students: [student._id],
-            invitationCode: "join123abc45"
+            invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-assignment-9"
         });
 
         const assignment = await Assignment.create({

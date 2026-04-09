@@ -119,6 +119,7 @@ describe("Course Routes Integration", () => {
             department: "cse",
             faculties: [faculty._id],
             invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-course-1",
         });
 
         const res = await request(app).post("/api/courses/student/join?invitationCode=join123abc45").set(authHeader());
@@ -148,6 +149,7 @@ describe("Course Routes Integration", () => {
             faculties: [faculty._id],
             students: [student._id],
             invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-course-2",
         });
 
         const res = await request(app).post("/api/courses/student/join?invitationCode=join123abc45").set(authHeader());
@@ -175,6 +177,7 @@ describe("Course Routes Integration", () => {
                 students: [student._id],
                 invitationCode: "join123abc45",
                 status: "active",
+                classLink: "https://meet.jit.si/UniDesk-course-3",
             },
             {
                 courseCode: "CSE 3211",
@@ -188,6 +191,7 @@ describe("Course Routes Integration", () => {
                 students: [student._id],
                 invitationCode: "join123abc46",
                 status: "completed",
+                classLink: "https://meet.jit.si/UniDesk-course-4",
             },
         ]);
 
@@ -214,6 +218,7 @@ describe("Course Routes Integration", () => {
             department: "cse",
             faculties: [faculty._id],
             invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-course-5",
         });
 
         const res = await request(app).patch(`/api/courses/${course._id}`).set(authHeader()).send({
@@ -241,6 +246,7 @@ describe("Course Routes Integration", () => {
             faculties: [faculty._id],
             invitationCode: "join123abc45",
             status: "completed",
+            classLink: "https://meet.jit.si/UniDesk-course-6",
         });
 
         const res = await request(app).patch(`/api/courses/${course._id}`).set(authHeader()).send({
@@ -268,6 +274,7 @@ describe("Course Routes Integration", () => {
             faculties: [faculty._id],
             students: [student._id],
             invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-course-7",
         });
 
         const res = await request(app).delete(`/api/courses/${course._id}/student/leave`).set(authHeader());
@@ -296,6 +303,7 @@ describe("Course Routes Integration", () => {
             faculties: [faculty._id],
             students: [student._id],
             invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-course-8",
         });
 
         const res = await request(app).delete(`/api/courses/${course._id}/students/${student._id}`).set(authHeader());
@@ -323,6 +331,7 @@ describe("Course Routes Integration", () => {
             department: "cse",
             faculties: [faculty._id],
             invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-course-9",
         });
 
         const res = await request(app).get("/api/admin/courses").set(authHeader());

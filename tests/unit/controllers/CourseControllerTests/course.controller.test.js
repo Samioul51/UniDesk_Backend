@@ -125,6 +125,7 @@ describe("CourseController", () => {
                 department: "cse",
                 faculties: ["faculty-1"],
                 invitationCode: "abc123def456",
+                classLink: expect.stringMatching(/^https:\/\/meet\.jit\.si\/UniDesk-/),
             });
 
             expect(res.status).toHaveBeenCalledWith(201);

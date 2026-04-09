@@ -78,6 +78,7 @@ describe("Material Routes Integration", () => {
             department: "cse",
             faculties: [faculty._id],
             invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-material-1",
         });
 
         const res = await request(app)
@@ -113,6 +114,7 @@ describe("Material Routes Integration", () => {
             faculties: [faculty._id],
             students: [student._id],
             invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-material-2",
         });
 
         await Material.create({
@@ -148,6 +150,7 @@ describe("Material Routes Integration", () => {
             department: "cse",
             faculties: [faculty._id],
             invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-material-3",
         });
 
         const material = await Material.create({

@@ -81,6 +81,7 @@ describe("Announcement Routes Integration", () => {
             faculties: [faculty._id],
             students: [student._id],
             invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-announcement-1",
         });
 
         const res = await request(app).post(`/api/course/${course._id}/announcement`).set(authHeader()).send({
@@ -114,6 +115,7 @@ describe("Announcement Routes Integration", () => {
             department: "cse",
             faculties: [otherFaculty._id],
             invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-announcement-2",
         });
 
         const res = await request(app).post(`/api/course/${course._id}/announcement`).set(authHeader()).send({
@@ -143,7 +145,8 @@ describe("Announcement Routes Integration", () => {
             semester: "2nd",
             department: "cse",
             faculties: [faculty._id],
-            invitationCode: "join123abc45"
+            invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-announcement-3"
         });
 
         const announcement = await Announcement.create({
@@ -179,7 +182,8 @@ describe("Announcement Routes Integration", () => {
             semester: "2nd",
             department: "cse",
             faculties: [ownerFaculty._id, actingFaculty._id],
-            invitationCode: "join123abc45"
+            invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-announcement-4"
         });
 
         const announcement = await Announcement.create({
@@ -213,7 +217,8 @@ describe("Announcement Routes Integration", () => {
             department: "cse",
             faculties: [faculty._id],
             students: [student._id],
-            invitationCode: "join123abc45"
+            invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-announcement-5"
         });
 
         await Announcement.create({
@@ -247,7 +252,8 @@ describe("Announcement Routes Integration", () => {
             department: "cse",
             faculties: [faculty._id],
             students: [],
-            invitationCode: "join123abc45"
+            invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-announcement-6"
         });
 
         const res = await request(app).get(`/api/course/${course._id}/announcements`).set(authHeader());
@@ -272,6 +278,7 @@ describe("Announcement Routes Integration", () => {
             department: "cse",
             faculties: [faculty._id],
             invitationCode: "join123abc45",
+            classLink: "https://meet.jit.si/UniDesk-announcement-7",
         });
 
         const announcement = await Announcement.create({
