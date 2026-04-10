@@ -1,5 +1,6 @@
 import { Course } from "../../models/CourseModel/course.model.js";
 import { generateInvitationCode } from "../../utils/InvitationCode/generateInvitationCode.js";
+import { createMeeting } from "../../utils/MeetLinkGeneration/meetLinkGeneration.js";
 
 // Course Creation
 
@@ -36,7 +37,8 @@ export const createCourse = async (req, res) => {
             semester: semester.trim(),
             department: department.trim().toLowerCase(),
             faculties: [req.dbUser._id],
-            invitationCode
+            invitationCode,
+            classLink: createMeeting()
         });
 
         return res.status(201).json({
@@ -494,7 +496,7 @@ export const getMyCourses = async (req, res) => {
 export const updateCourse = async (req, res) => {
     try {
         const id = req.params.id;
-        const { description, regenerateInvite, status } = req.body;
+        const { description, regenerateInvite, regenerateClassLink, status } = req.body;
 
         if (req.dbUser.role !== "faculty")
             return res.status(403).json({
@@ -520,7 +522,7 @@ export const updateCourse = async (req, res) => {
                 message: "You are not a faculty of this course"
             });
 
-        if (!description && regenerateInvite !== true && !status)
+        if (!description && regenerateInvite !== true && regenerateClassLink !== true && !status)
             return res.status(400).json({
                 success: false,
                 message: "Nothing to update"
@@ -559,6 +561,12 @@ export const updateCourse = async (req, res) => {
                 message: "Cannot regenerate invite for completed course"
             });
 
+        if (status === "completed" && regenerateClassLink === true)
+            return res.status(400).json({
+                success: false,
+                message: "Cannot regenerate class link for completed course"
+            });
+
         if (regenerateInvite === true) {
             let newCode;
             let exists = true;
@@ -570,6 +578,9 @@ export const updateCourse = async (req, res) => {
 
             updatedFields.invitationCode = newCode;
         }
+
+        if (regenerateClassLink === true)
+            updatedFields.classLink = createMeeting();
 
         const result = await Course.updateOne(
             { _id: id },
@@ -590,6 +601,9 @@ export const updateCourse = async (req, res) => {
             course: updatedCourse,
             ...(updatedFields.invitationCode && {
                 newInvitationLink: `${process.env.LIVE_LINK}/join-course?code=${updatedFields.invitationCode}`
+            }),
+            ...(updatedFields.classLink && {
+                newClassLink: updatedFields.classLink
             })
         });
     } catch (error) {

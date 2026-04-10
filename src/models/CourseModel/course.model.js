@@ -48,6 +48,10 @@ const courseSchema=new Schema({
         unique:true,
         index:true
     },
+    classLink: {
+        type: String,
+        required: true
+    },
     status:{
         type:String,
         enum:["active","completed"],

@@ -27,7 +27,7 @@ export const createConversation = async (req, res) => {
             });
 
         const receiver = await User.findById(receiverID);
-        console.log("receiver found:", receiver?._id);
+        // console.log("receiver found:", receiver?._id);
 
         if (!receiver)
             return res.status(404).json({
@@ -45,11 +45,11 @@ export const createConversation = async (req, res) => {
             }
         }).populate("participants", "name email");
 
-        console.log("existing conversation:", conversation?._id);
+        // console.log("existing conversation:", conversation?._id);
 
-        console.log("senderID:", senderID);
-        console.log("receiverID:", receiverID);
-        console.log("body:", req.body);
+        // console.log("senderID:", senderID);
+        // console.log("receiverID:", receiverID);
+        // console.log("body:", req.body);
 
         if (conversation)
             return res.status(200).json({
