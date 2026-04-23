@@ -449,3 +449,67 @@ export const removeSupervisee = async (req, res) => {
         });
     }
 };
+
+// Supervisee contact
+
+export const supervisesToContact = async (req, res) => {
+    try {
+        const supervisorID = req.params.supervisorID;
+
+        const user = req.dbUser;
+
+        const { students, relationshipType, message } = req.body;
+
+        if (!students || !Array.isArray(students) || students.length === 0)
+            return res.status(400).json({
+                success: false,
+                message: "At least one student is required"
+            });
+
+        if (user._id.toString() !== supervisorID.toString())
+            return res.status(403).json({
+                success: false,
+                message: "You are not authorized to contact these supervises"
+            });
+
+        const supervisorDoc = await Supervisor.findOne({ supervisor: supervisorID }).populate("supervisor", "name").populate("supervises.student", "name email studentID");
+
+        if (!supervisorDoc)
+            return res.status(404).json({
+                success: false,
+                message: "No supervisor record found"
+            });
+
+        const activeRelations = supervisorDoc.supervises.filter(item => item.status === "active" && students.includes(item.student._id.toString()) && (!relationshipType || item.relationshipType === relationshipType)
+        );
+
+        if (!activeRelations.length)
+            return res.status(404).json({
+                success: false,
+                message: "No active supervisee found for the selected students"
+            });
+
+        const receivers = activeRelations.map(item => item.student._id);
+
+        await notifyUsers({
+            receivers: receivers,
+            sender: supervisorID,
+            type: notificationTypes.superviseeContact,
+            title: "Your supervisor wants you to contact him",
+            message: message || `${formatName(supervisorDoc.supervisor.name)} asked you to get in touch`,
+            entityModel: "Supervisor",
+            redirectURL: "/supervisor"
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Supervises are asked to contact immediately",
+            notifiedCount:receivers.length
+        })
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};

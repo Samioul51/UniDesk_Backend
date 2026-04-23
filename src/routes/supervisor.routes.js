@@ -1,5 +1,5 @@
 import express from "express";
-import { assignSupervisee, getSupervises, getSupervisors, removeSupervisee, updateSuperViseeStatus } from "../controllers/SupervisorController/supervisor.controller.js";
+import { assignSupervisee, getSupervises, getSupervisors, removeSupervisee, supervisesToContact, updateSuperViseeStatus } from "../controllers/SupervisorController/supervisor.controller.js";
 import { verifyFirebaseToken } from "../middlewares/Auth/auth.middleware.js";
 import { verifyRole } from "../middlewares/Role/role.middleware.js";
 
@@ -24,5 +24,9 @@ router.patch("/supervisor/:supervisorID",verifyFirebaseToken,verifyRole(["facult
 // Remove supervisee
 
 router.delete("/supervisor/:supervisorID",verifyFirebaseToken,verifyRole(["faculty","admin"]),removeSupervisee);
+
+// Supervises contact
+
+router.post("/supervisor/:supervisorID/contact",verifyFirebaseToken,verifyRole(["faculty"]),supervisesToContact);
 
 export default router;
