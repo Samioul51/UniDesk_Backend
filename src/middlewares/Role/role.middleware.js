@@ -10,6 +10,18 @@ export const verifyRole = (roles) => async (req, res, next) => {
                 message: "Forbidden access"
             });
 
+        if(dbUser.status==="pending")
+            return res.status(403).json({
+                success:false,
+                message:"Your account is not verified. Verify your account to proceed"
+            });
+
+        if(dbUser.status==="suspended")
+            return res.status(403).json({
+                success:false,
+                message:"Your account is suspended"
+            })
+
         req.dbUser=dbUser;
         next();
     } catch (error) {
