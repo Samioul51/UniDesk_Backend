@@ -498,7 +498,7 @@ export const supervisesToContact = async (req, res) => {
             title: "Your supervisor wants you to contact him",
             message: message || `${formatName(supervisorDoc.supervisor.name)} asked you to get in touch`,
             entityModel: "Supervisor",
-            redirectURL: "/supervisor"
+            redirectURL: "/ask-mentor"
         });
 
         return res.status(200).json({
