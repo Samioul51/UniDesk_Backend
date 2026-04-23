@@ -638,3 +638,83 @@ export const getUserByID = async (req, res) => {
         });
     }
 };
+
+// Get current user's account status
+
+export const getAccountStatus = async (req, res) => {
+    try {
+        const email = req.user.email;
+
+        const user = await User.findOne({ email }).select("name email role status");
+
+        if (!user)
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+
+        return res.status(200).json({
+            success: true,
+            user: {
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                status: user.status
+            }
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+// Complete email verification for pending user
+
+export const verifyPendingAccount = async (req, res) => {
+    try {
+        const email = req.user.email;
+
+        const dbUser = await User.findOne({ email });
+
+        if (!dbUser)
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+
+        if (dbUser.status === "suspended")
+            return res.status(403).json({
+                success: false,
+                message: "Your account is suspended"
+            });
+
+        if (dbUser.status === "verified")
+            return res.status(200).json({
+                success: true,
+                message: "Account already verified"
+            });
+
+        const firebaseUser = await auth.getUser(req.user.uid);
+
+        if (!firebaseUser.emailVerified)
+            return res.status(400).json({
+                success: false,
+                message: "Email is not verified yet"
+            });
+
+        dbUser.status = "verified";
+        await dbUser.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Account verified successfully"
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
