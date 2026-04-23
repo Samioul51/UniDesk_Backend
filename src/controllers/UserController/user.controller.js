@@ -627,14 +627,14 @@ export const getUserByID = async (req, res) => {
                 message: "User not found"
             });
 
-        return res.status(200).json({ 
-            success: true, 
-            user 
+        return res.status(200).json({
+            success: true,
+            user
         });
     } catch (error) {
-        return res.status(500).json({ 
-            success: false, 
-            message: error.message 
+        return res.status(500).json({
+            success: false,
+            message: error.message
         });
     }
 };
@@ -645,7 +645,7 @@ export const getAccountStatus = async (req, res) => {
     try {
         const email = req.user.email;
 
-        const user = await User.findOne({ email }).select("name email role status");
+        const user = await User.findOne({ email });
 
         if (!user)
             return res.status(404).json({
@@ -655,12 +655,7 @@ export const getAccountStatus = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            user: {
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                status: user.status
-            }
+            user
         });
     } catch (error) {
         return res.status(500).json({
