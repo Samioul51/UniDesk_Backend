@@ -1,6 +1,6 @@
-import { v4 as uuid } from "uuid";
+import crypto from "crypto";
 
 export const createMeeting = () => {
-    const meetingId = uuid().slice(0, 8); 
+    const meetingId = crypto.randomBytes(4).slice(0, 8); 
     return `https://meet.jit.si/UniDesk-${meetingId}`;
 };
