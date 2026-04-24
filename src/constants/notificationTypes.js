@@ -39,6 +39,7 @@ export const notificationTypes={
     // Supervisor related
 
     supervisorAssigned:"SUPERVISOR_ASSIGNED",
+    superviseeContact:"SUPERVISEE_CONTACT",
 
     // Leaderboard related
 
