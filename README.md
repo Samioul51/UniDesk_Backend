@@ -32,6 +32,8 @@ A RESTful backend API for UniDesk, a learning management platform designed to fa
 
 ## Overview
 
+The platform supports in-app notifications, real-time Socket.IO events, and email delivery for selected notification types.
+
 UniDesk Backend serves as the core API layer for a university desk application. It supports three user roles — **Admin**, **Faculty** and **Student** — each with a distinct set of permissions. The system handles everything from course and assignment management to real-time chat, appointment scheduling and a shared academic repository.
 
 ---
@@ -46,6 +48,7 @@ UniDesk Backend serves as the core API layer for a university desk application. 
 | TokenService     | Firebase Admin SDK                |
 | File Storage     | Cloudinary                        |
 | Real-Time        | Socket.IO                         |
+| Email            | Nodemailer                        |
 | Scheduled Jobs   | node-cron                         |
 | Testing          | Jest, Supertest, mongodb-memory-server |
 
@@ -95,6 +98,9 @@ UniDesk_Backend/
 │   ├── utils/                    # Helper utilities
 │   │   ├── CloudinaryValidation/
 │   │   ├── DeleteFromCloudinary/
+│   │   ├── Email/
+│   │   │   ├── sendEmail.js
+│   │   │   └── sendNotificationEmail.js
 │   │   ├── Firebase/
 │   │   ├── FormatName/
 │   │   ├── HelperFunctionsForScheduleUpdate/
@@ -130,7 +136,7 @@ Create a `.env` file in the project root with the following variables:
 # MongoDB
 MONGODB_URI=your_mongodb_connection_string
 
-# Frontend URL (for CORS reference)
+# Frontend URL
 LIVE_LINK=http://localhost:5173
 
 # Cloudinary
@@ -151,6 +157,10 @@ SMTP_PASS=your_app_password
 SMTP_FROM="UniDesk <your_email@gmail.com>"
 ```
 
+`SMTP_FROM` should use a full sender format such as `UniDesk <your_email@gmail.com>`.
+
+If you use Gmail SMTP, use a Google App Password instead of your normal account password.
+
 Firebase Admin credentials are loaded from `unideskFBAdmin.json`. Place this file in the project root (do not commit it).
 
 ---
@@ -169,6 +179,7 @@ npm install
 
 # 3. Set up environment variables
 # Copy the example above into a .env file and fill in your credentials
+# Email notifications require the SMTP variables above
 
 # 4. Start the development server
 npm run dev
@@ -347,6 +358,12 @@ A shared academic resource hub open for all authenticated users to contribute an
 | PATCH | `/notifications/all` | admin, faculty, student | Mark all notifications as read |
 | PATCH | `/notifications/:id` | admin, faculty, student | Mark a single notification as read |
 
+Notifications are always stored in the database and emitted over Socket.IO in real time.
+
+Email delivery is enabled only for selected notification types such as announcements, study materials, assignments, grading updates, appointment updates, reminders, repository approval, and supervisor-related contact notifications.
+
+Chat message notifications remain in-app only.
+
 ---
 
 ## Real-Time Features (Socket.IO)
@@ -404,6 +421,8 @@ npm run test:ci
 ```
 
 Integration tests use `mongodb-memory-server` to spin up an in-memory MongoDB instance, ensuring tests are isolated from the production database.
+
+Tests primarily verify the in-app notification flow. Real email delivery depends on valid SMTP credentials in the runtime environment.
 
 ---
 
