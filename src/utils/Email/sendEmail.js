@@ -14,8 +14,11 @@ export const sendEmail = async ({ to, subject, text, html }) => {
     if (!to) 
         return;
 
+    if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS)
+        throw new Error("SMTP configuration is incomplete");
+
     await transporter.sendMail({
-        from: process.env.SMTP_FROM || process.env.SMTP_USER,
+        from: process.env.SMTP_FROM,
         to,
         subject,
         text,

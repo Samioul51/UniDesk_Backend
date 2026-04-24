@@ -140,6 +140,15 @@ CLOUDINARY_API_SECRET=your_api_secret
 
 # Timezone
 TZ=Asia/Dhaka
+
+# SMTP for email notification
+
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_app_password
+SMTP_FROM="UniDesk <your_email@gmail.com>"
 ```
 
 Firebase Admin credentials are loaded from `unideskFBAdmin.json`. Place this file in the project root (do not commit it).
