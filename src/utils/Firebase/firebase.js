@@ -1,4 +1,5 @@
 import admin from "firebase-admin";
+// import serviceAccount from "../../../unideskFBAdmin.json" with { type: "json" };
 
 const decoded=Buffer.from(process.env.FB_SERVICE_KEY,"base64").toString("utf8");
 

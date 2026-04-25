@@ -1,10 +1,18 @@
 import express from "express";
-import { adminDeleteUser, adminUpdateProfile, createUser, getSingleUser, getUserByID, getUsers, updateProfile } from "../controllers/UserController/user.controller.js";
+import { adminDeleteUser, adminUpdateProfile, createUser, getAccountStatus, getSingleUser, getUserByID, getUsers, updateProfile, verifyPendingAccount } from "../controllers/UserController/user.controller.js";
 import { verifyFirebaseToken } from "../middlewares/Auth/auth.middleware.js";
 import { verifyRole } from "../middlewares/Role/role.middleware.js";
 
 
 const router=express.Router();
+
+// Account status check
+
+router.get("/users/account-status", verifyFirebaseToken, getAccountStatus);
+
+// Verification process
+
+router.patch("/users/account-status/verify", verifyFirebaseToken, verifyPendingAccount);
 
 // User creation
 
